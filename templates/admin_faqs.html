@@ -20,10 +20,16 @@
                 <label>Resposta Completa:</label>
                 <textarea name="answer" class="form-control" rows="4" required placeholder="Ex: Você pode encontrar as aulas na seção de materiais..."></textarea>
             </div>
-            <div class="form-group">
-                <label style="color: #eab308;">Palavra-Chave para o Link (Opcional):</label>
-                <p style="font-size: 0.8rem; color: #94a3b8; margin-top: 0.2rem;">Essa palavra na resposta acima ficará em amarelo e será clicável.</p>
-                <input type="text" name="keyword" class="form-control" placeholder="Ex: materiais">
+            <div class="form-group" style="display: flex; gap: 1rem; align-items: flex-end;">
+                <div style="flex: 1;">
+                    <label style="color: #eab308;">Palavra-Chave para o Link (Opcional):</label>
+                    <p style="font-size: 0.8rem; color: #94a3b8; margin-top: 0.2rem;">Essa palavra na resposta acima ficará colorida e clicável.</p>
+                    <input type="text" name="keyword" class="form-control" placeholder="Ex: materiais">
+                </div>
+                <div style="width: 100px;">
+                    <label style="color: #eab308;">Cor:</label>
+                    <input type="color" name="keyword_color" class="form-control" style="padding: 0; height: 42px; width: 100%; cursor: pointer;" value="#eab308">
+                </div>
             </div>
             <div class="form-group">
                 <label style="color: #eab308;">URL de Destino do Link:</label>
@@ -41,15 +47,15 @@
             <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 1rem; border-bottom: 1px solid rgba(255,255,255,0.05); padding-bottom: 0.5rem;">
                 <div style="font-weight: bold; color: white; font-size: 1.2rem;">{{ faq.question }}</div>
                 <div style="display: flex; gap: 0.5rem;">
-                    <button onclick='abrirEdicao({{ faq.id }}, {{ faq.question|tojson }}, {{ faq.answer|tojson }}, {{ faq.keyword|tojson }}, {{ faq.redirect_url|tojson }})' class="btn" style="padding: 0.3rem 0.6rem; font-size: 0.8rem; background: #eab308; color: black;">✏️ Editar</button>
+                    <button onclick='abrirEdicao({{ faq.id }}, {{ faq.question|tojson }}, {{ faq.answer|tojson }}, {{ faq.keyword|tojson }}, {{ faq.redirect_url|tojson }}, {{ faq.keyword_color|tojson }})' class="btn" style="padding: 0.3rem 0.6rem; font-size: 0.8rem; background: #eab308; color: black;">✏️ Editar</button>
                     <form action="{{ url_for('delete_faq', faq_id=faq.id) }}" method="POST" style="display: inline;" onsubmit="return confirm('Tem certeza que deseja excluir esta pergunta?');">
                         <button type="submit" class="btn btn-danger" style="padding: 0.3rem 0.6rem; font-size: 0.8rem;">🗑️ Excluir</button>
                     </form>
                 </div>
             </div>
             <div style="font-size: 1rem; color: #f1f5f9; line-height: 1.5; margin-bottom: 1rem;">{{ faq.answer }}</div>
-            <div style="font-size: 0.85rem; color: #94a3b8; background: rgba(0,0,0,0.3); padding: 0.5rem 1rem; border-radius: 6px; display: inline-block;">
-                Link: <strong style="color: #eab308; font-family: monospace;">{{ faq.keyword or 'Nenhum' }}</strong> &rarr; {{ faq.redirect_url or '-' }}
+            <div style="font-size: 0.85rem; color: #94a3b8; background: rgba(0,0,0,0.3); padding: 0.5rem 1rem; border-radius: 6px; display: inline-flex; align-items: center; gap: 0.5rem;">
+                Link: <span style="display: inline-block; width: 12px; height: 12px; border-radius: 50%; background: {{ faq.keyword_color or '#eab308' }};"></span> <strong style="color: {{ faq.keyword_color or '#eab308' }}; font-family: monospace;">{{ faq.keyword or 'Nenhum' }}</strong> &rarr; {{ faq.redirect_url or '-' }}
             </div>
         </div>
         {% else %}
@@ -72,9 +78,15 @@
                 <label>Resposta:</label>
                 <textarea name="answer" id="editAnswer" class="form-control" rows="5" required></textarea>
             </div>
-            <div class="form-group">
-                <label>Palavra-Chave:</label>
-                <input type="text" name="keyword" id="editKeyword" class="form-control">
+            <div class="form-group" style="display: flex; gap: 1rem; align-items: flex-end;">
+                <div style="flex: 1;">
+                    <label>Palavra-Chave:</label>
+                    <input type="text" name="keyword" id="editKeyword" class="form-control">
+                </div>
+                <div style="width: 100px;">
+                    <label>Cor:</label>
+                    <input type="color" name="keyword_color" id="editKeywordColor" class="form-control" style="padding: 0; height: 42px; width: 100%; cursor: pointer;" value="#eab308">
+                </div>
             </div>
             <div class="form-group">
                 <label>URL de Redirecionamento:</label>
@@ -89,12 +101,13 @@
 </div>
 
 <script>
-    function abrirEdicao(id, question, answer, keyword, redirect) {
+    function abrirEdicao(id, question, answer, keyword, redirect, color) {
         document.getElementById('formEditFaq').action = '/admin/faqs/edit/' + id;
         document.getElementById('editQuestion').value = question;
         document.getElementById('editAnswer').value = answer;
-        document.getElementById('editKeyword').value = keyword;
-        document.getElementById('editRedirect').value = redirect;
+        document.getElementById('editKeyword').value = keyword || '';
+        document.getElementById('editRedirect').value = redirect || '';
+        document.getElementById('editKeywordColor').value = color || '#eab308';
         document.getElementById('modalEditFaq').style.display = 'flex';
     }
     

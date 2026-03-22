@@ -12,7 +12,7 @@
             <h3 style="color: white; margin-bottom: 1rem;">{{ loop.index }}. {{ faq.question }}</h3>
             <p style="color: #cbd5e1; line-height: 1.6; font-size: 1.15rem;">
                 {% if faq.keyword and faq.redirect_url %}
-                    {{ faq.answer.replace(faq.keyword, '<a href="' + faq.redirect_url + '" style="color: #eab308; font-weight: bold; text-decoration: underline; background: rgba(234, 179, 8, 0.1); padding: 2px 6px; border-radius: 4px;">' + faq.keyword + '</a>') | safe }}
+                    {{ faq.answer.replace(faq.keyword, '<a href="' + faq.redirect_url + '" style="color: ' + (faq.keyword_color or '#eab308') + '; font-weight: bold; text-decoration: underline; background: rgba(0, 0, 0, 0.2); padding: 2px 6px; border-radius: 4px;">' + faq.keyword + '</a>') | safe }}
                 {% else %}
                     {{ faq.answer }}
                 {% endif %}

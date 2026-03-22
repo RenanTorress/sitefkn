@@ -669,10 +669,11 @@ with app.app_context():
         answer = request.form['answer']
         keyword = request.form.get('keyword', '')
         redirect_url = request.form.get('redirect_url', '')
+        keyword_color = request.form.get('keyword_color', '#eab308')
         
         conn = get_db()
-        conn.execute('UPDATE faqs SET question=?, answer=?, keyword=?, redirect_url=? WHERE id=?', 
-                     (question, answer, keyword, redirect_url, faq_id))
+        conn.execute('UPDATE faqs SET question=?, answer=?, keyword=?, redirect_url=?, keyword_color=? WHERE id=?', 
+                     (question, answer, keyword, redirect_url, keyword_color, faq_id))
         conn.commit()
         conn.close()
         flash('Pergunta atualizada com sucesso.', 'success')
@@ -680,6 +681,16 @@ with app.app_context():
 
     try:
         conn = get_db()
+        
+        # MIGRATIONS: Remove FAQs repetidas e adiciona coluna de cor
+        try: conn.execute("ALTER TABLE faqs ADD COLUMN keyword_color TEXT DEFAULT '#eab308'")
+        except: pass
+        
+        try: conn.execute("DELETE FROM faqs WHERE id NOT IN (SELECT MIN(id) FROM faqs GROUP BY question, answer)")
+        except: pass
+        
+        conn.commit()
+        
         # Só cria os usuários padrão se ainda não existirem — sem UPDATE no startup
         dev_exists = conn.execute('SELECT id FROM users WHERE email = ?', ('desenvolper@fkn.com',)).fetchone()
         if not dev_exists:
@@ -778,7 +789,7 @@ def dev_panel():
     
     conn = get_db()
     if request.method == 'POST':
-        keys = ['dev_instagram_url', 'dev_name', 'show_dev_name', 'x_url', 'facebook_url', 'whatsapp_url', 'footer_rights']
+        keys = ['dev_instagram_url', 'dev_name', 'show_dev_name', 'x_url', 'facebook_url', 'whatsapp_url', 'footer_rights', 'home_hero_title', 'home_hero_subtitle', 'site_name', 'primary_color']
         for k in keys:
             val = request.form.get(k, '')
             conn.execute('INSERT INTO settings (key, value) VALUES (?, ?) ON CONFLICT(key) DO UPDATE SET value=EXCLUDED.value', (k, val))
@@ -798,7 +809,8 @@ def admin_faqs():
         answer = request.form.get('answer')
         keyword = request.form.get('keyword')
         redirect_url = request.form.get('redirect_url')
-        conn.execute('INSERT INTO faqs (question, answer, keyword, redirect_url) VALUES (?, ?, ?, ?)', (question, answer, keyword, redirect_url))
+        keyword_color = request.form.get('keyword_color', '#eab308')
+        conn.execute('INSERT INTO faqs (question, answer, keyword, redirect_url, keyword_color) VALUES (?, ?, ?, ?, ?)', (question, answer, keyword, redirect_url, keyword_color))
         conn.commit()
         flash('FAQ Adicionada!', 'success')
     
