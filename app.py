@@ -231,7 +231,7 @@ def edit_profile():
             if supabase:
                 file_content = file.read()
                 content_type = file.content_type or 'image/jpeg'
-                pic_url = supabase_upload('avatars', filename, file_content, content_type)
+                pic_url = supabase_upload('materiais', f"avatars/{filename}", file_content, content_type)
             
             if not pic_url:
                 if supabase: 
