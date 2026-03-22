@@ -232,6 +232,15 @@
                 <input type="text" name="name" class="form-control" placeholder="Nome do Professor (Vai aparecer no chat)" required style="margin-bottom: 0.5rem;">
                 <input type="email" name="email" class="form-control" placeholder="E-mail Funcional" required style="margin-bottom: 0.5rem;">
                 <input type="password" name="password" class="form-control" placeholder="Senha Forte" required style="margin-bottom: 0.5rem;">
+                
+                <div class="form-group" style="margin-bottom: 0.8rem;">
+                    <label style="font-size: 0.85rem; color: #94a3b8;">Nível de Acesso (Cargo):</label>
+                    <select name="role" class="form-control" style="background: rgba(0,0,0,0.3);">
+                        <option value="admin">Administrador Auxiliar</option>
+                        <option value="master">Admin Master (Controle Total)</option>
+                    </select>
+                </div>
+                
                 <button type="submit" class="btn" style="width: 100%;">Recrutar Novo Professor</button>
             </form>
             
@@ -247,16 +256,31 @@
                         <div style="font-size: 0.75rem; color: #94a3b8;">{{ user.email }}</div>
                     </div>
                 </div>
-                {% if user.email != 'admin@admin.com' %}
-                <form method="POST" action="{{ url_for('delete_user', user_id=user.id) }}" onsubmit="return confirm('Extirpar Professor? (Irreversível)');">
-                    <button type="submit" class="btn btn-danger" style="padding: 0.2rem 0.6rem;">Banir</button>
-                </form>
-                {% else %}
-                <span class="badge" style="background: var(--primary); font-size: 0.7rem; padding: 4px 8px;">👑 MASTER</span>
-                {% endif %}
+                <div style="display: flex; gap: 0.5rem; align-items: center;">
+                    {% if user.role == 'developer' %}
+                        <span class="badge" style="background: #eab308; color: black; font-size: 0.7rem; padding: 4px 8px; font-weight: bold;">🛠️ DEV</span>
+                    {% elif user.role == 'master' %}
+                        <span class="badge" style="background: var(--primary); font-size: 0.7rem; padding: 4px 8px;">👑 MASTER</span>
+                    {% else %}
+                        <span class="badge" style="background: #64748b; font-size: 0.7rem; padding: 4px 8px;">👤 ADMIN</span>
+                    {% endif %}
+                    
+                    {% set can_del = false %}
+                    {% if session.get('role') == 'developer' and user.email != session.get('email') %}
+                        {% set can_del = true %}
+                    {% elif session.get('role') == 'master' and user.role == 'admin' %}
+                        {% set can_del = true %}
+                    {% endif %}
+                    
+                    {% if can_del %}
+                    <form method="POST" action="{{ url_for('delete_user', user_id=user.id) }}" onsubmit="return confirm('Extirpar Professor? (Irreversível)');">
+                        <button type="submit" class="btn btn-danger" style="padding: 0.2rem 0.6rem; font-size: 0.7rem;">Banir</button>
+                    </form>
+                    {% endif %}
+                </div>
             </div>
             {% endfor %}
-            <p style="font-size: 0.8rem; color: #64748b; margin-top: 1rem; text-align: center;">Somente a conta Master possui poder de Banimento.</p>
+            <p style="font-size: 0.8rem; color: #64748b; margin-top: 1rem; text-align: center;">Hierarquia: Desenvolvedor > Master > Admin.</p>
         </div>
     </div>
 </div>

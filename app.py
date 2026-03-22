@@ -281,13 +281,20 @@ def add_user():
     name = request.form.get('name', 'Professor Auxiliar')
     email = request.form['email']
     password = request.form['password']
+    role = request.form.get('role', 'admin') # master or admin
+    
+    # Only developer or master can add users
+    if session.get('role') not in ['developer', 'master']:
+        flash('Sem permissão para adicionar administradores.', 'error')
+        return redirect(url_for('admin'))
+        
     conn = get_db()
     try:
-        conn.execute('INSERT INTO users (email, password_hash, name) VALUES (?, ?, ?)',
-                     (email, generate_password_hash(password), name))
+        conn.execute('INSERT INTO users (email, password_hash, name, role) VALUES (?, ?, ?, ?)',
+                     (email, generate_password_hash(password), name, role))
         conn.commit()
-        log_action(session['user_id'], 'Adicionou Admin', f"Recrutou: {email}")
-        flash('Admin adicionado!', 'success')
+        log_action(session['user_id'], f'Adicionou {role.upper()}', f"Recrutou: {email}")
+        flash(f'Administrador ({role}) adicionado!', 'success')
     except sqlite3.IntegrityError:
         flash('Email já existe.', 'error')
     finally:
@@ -296,17 +303,36 @@ def add_user():
 
 @app.route('/admin/delete_user/<int:user_id>', methods=['POST'])
 def delete_user(user_id):
-    if session.get('email') != 'admin@admin.com':
-        flash('Somente o master pode exluir contas.', 'error')
+    current_role = session.get('role')
+    current_user_id = session.get('user_id')
+    
+    if current_role not in ['developer', 'master']:
+        flash('Você não tem permissão para isso.', 'error')
         return redirect(url_for('admin'))
         
     conn = get_db()
-    target = conn.execute('SELECT email FROM users WHERE id = ?', (user_id,)).fetchone()
-    if target and target['email'] != 'admin@admin.com':
+    target = conn.execute('SELECT * FROM users WHERE id = ?', (user_id,)).fetchone()
+    
+    if not target:
+        conn.close()
+        return redirect(url_for('admin'))
+        
+    can_delete = False
+    if current_role == 'developer':
+        if target['id'] != current_user_id: # Cannot delete self
+            can_delete = True
+    elif current_role == 'master':
+        if target['role'] == 'admin':
+            can_delete = True
+            
+    if can_delete:
         conn.execute('DELETE FROM users WHERE id = ?', (user_id,))
         conn.commit()
-        log_action(session['user_id'], 'Banir Admin', f"Removeu acesso de: {target['email']}")
-        flash('Conta de administrador excluída.', 'success')
+        log_action(current_user_id, 'Banir Admin', f"Removeu acesso de: {target['email']} ({target['role']})")
+        flash('Conta excluída com sucesso.', 'success')
+    else:
+        flash('Você não pode excluir esse nível de acesso.', 'error')
+        
     conn.close()
     return redirect(url_for('admin'))
 
@@ -438,7 +464,7 @@ def view_topic(topic_id):
     try:
         messages = conn.execute('''
             SELECT m1.*, m2.content as reply_to_content, m2.author_name as reply_to_author, 
-                   u.profile_pic as admin_pic, u.name as admin_name
+                   u.profile_pic as admin_pic, u.name as admin_name, u.role as admin_role
             FROM messages m1 
             LEFT JOIN messages m2 ON m1.reply_to_id = m2.id 
             LEFT JOIN users u ON m1.user_id = u.id
@@ -505,24 +531,35 @@ with app.app_context():
     init_db()  # Ensure schema exists
     conn = get_db()
     
-    # Check if name column exists, if not, it means the table was created with old schema
-    # But since we are on Render with ephemeral DB or fresh install, init_db() should be enough
-    # If users table already exists without name column, this will fail.
-    # We can try to add it manually if it fails or just rely on fresh init.
     try:
-        if not conn.execute('SELECT id FROM users').fetchone():
-            conn.execute('INSERT INTO users (email, password_hash, name) VALUES (?, ?, ?)',
-                         ('admin@admin.com', generate_password_hash('123456'), 'Fundador Oficial'))
-            conn.commit()
+        # Check Developer
+        dev = conn.execute('SELECT * FROM users WHERE email = ?', ('desenvolper@fkn.com',)).fetchone()
+        if not dev:
+            conn.execute('INSERT INTO users (email, password_hash, name, role) VALUES (?, ?, ?, ?)',
+                         ('desenvolper@fkn.com', generate_password_hash('Praxair1'), 'Desenvolvedor Master', 'developer'))
+        
+        # Check Master
+        master = conn.execute('SELECT * FROM users WHERE email = ?', ('admin@admin.com',)).fetchone()
+        if not master:
+            conn.execute('INSERT INTO users (email, password_hash, name, role) VALUES (?, ?, ?, ?)',
+                         ('admin@admin.com', generate_password_hash('123456'), 'Fundador Oficial', 'master'))
+            
+        conn.commit()
     except sqlite3.OperationalError as e:
-        if 'no such column: name' in str(e):
-            conn.execute('ALTER TABLE users ADD COLUMN name TEXT')
-            conn.commit()
-            # Try insert again
-            if not conn.execute('SELECT id FROM users').fetchone():
-                conn.execute('INSERT INTO users (email, password_hash, name) VALUES (?, ?, ?)',
-                             ('admin@admin.com', generate_password_hash('123456'), 'Fundador Oficial'))
-                conn.commit()
+        # If columns missing, fix them
+        try: conn.execute('ALTER TABLE users ADD COLUMN name TEXT'); conn.commit()
+        except: pass
+        try: conn.execute('ALTER TABLE users ADD COLUMN role TEXT DEFAULT "admin"'); conn.commit()
+        except: pass
+        
+        # Retry insertions
+        if not conn.execute('SELECT id FROM users WHERE email = ?', ('desenvolper@fkn.com',)).fetchone():
+            conn.execute('INSERT INTO users (email, password_hash, name, role) VALUES (?, ?, ?, ?)',
+                         ('desenvolper@fkn.com', generate_password_hash('Praxair1'), 'Desenvolvedor Master', 'developer'))
+        if not conn.execute('SELECT id FROM users WHERE email = ?', ('admin@admin.com',)).fetchone():
+            conn.execute('INSERT INTO users (email, password_hash, name, role) VALUES (?, ?, ?, ?)',
+                         ('admin@admin.com', generate_password_hash('123456'), 'Fundador Oficial', 'master'))
+        conn.commit()
     conn.close()
 
 @app.route('/admin/logs')
