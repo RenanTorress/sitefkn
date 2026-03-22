@@ -308,12 +308,6 @@
                 <a href="{{ url_for('admin_faqs') }}" class="btn" style="background: rgba(255,255,255,0.05); text-align: center; text-decoration: none;">
                     ❓ Gerenciar Perguntas (FAQ)
                 </a>
-                <a href="{{ url_for('admin_exams') }}" class="btn" style="background: rgba(234, 179, 8, 0.05); color: #eab308; border: 1px solid #eab308; text-align: center; text-decoration: none; font-weight: bold;">
-                    📝 Criar Modo Prova / Gabaritos
-                </a>
-                <a href="{{ url_for('exam_stats') }}" class="btn" style="background: #eab308; color: black; text-align: center; text-decoration: none; font-weight: bold;">
-                    📊 Relatórios e Médias de Notas
-                </a>
                 {% if session.get('role') == 'developer' %}
                 <a href="{{ url_for('dev_panel') }}" class="btn" style="background: #000; border: 1px solid #eab308; color: #eab308; text-align: center; text-decoration: none; font-weight: bold;">
                     ⚙️ PAINEL DO DESENVOLVEDOR

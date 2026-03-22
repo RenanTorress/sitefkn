@@ -96,14 +96,14 @@ def materiais(folder_id=None):
         files = conn.execute('SELECT * FROM files WHERE folder_id IS NULL ORDER BY filename').fetchall()
         
     # Get Exams for this folder
-    exams = conn.execute('''
-        SELECT * FROM exams 
-        WHERE (folder_id = ? OR (folder_id IS NULL AND ? IS NULL))
-        AND (is_visible = 1)
-    ''', (folder_id, folder_id)).fetchall()
+    # exams = conn.execute('''
+    #     SELECT * FROM exams 
+    #     WHERE (folder_id = ? OR (folder_id IS NULL AND ? IS NULL))
+    #     AND (is_visible = 1)
+    # ''', (folder_id, folder_id)).fetchall()
     
     conn.close()
-    return render_template('materiais.html', current_folder=current_folder, breadcrumbs=breadcrumbs, subfolders=subfolders, files=files, exams=exams)
+    return render_template('materiais.html', current_folder=current_folder, breadcrumbs=breadcrumbs, subfolders=subfolders, files=files)
 
 @app.route('/login', methods=['GET', 'POST'])
 def login():
@@ -580,40 +580,40 @@ with app.app_context():
     except: pass
     try: conn.execute('ALTER TABLE bug_reports ADD COLUMN is_resolved BOOLEAN DEFAULT 0'); conn.commit()
     except: pass
-    try: conn.execute('ALTER TABLE exams ADD COLUMN pdf_path TEXT'); conn.commit()
-    except: pass
-    try: conn.execute('ALTER TABLE exam_questions ADD COLUMN resolution_text TEXT'); conn.commit()
-    except: pass
+    # try: conn.execute('ALTER TABLE exams ADD COLUMN pdf_path TEXT'); conn.commit()
+    # except: pass
+    # try: conn.execute('ALTER TABLE exam_questions ADD COLUMN resolution_text TEXT'); conn.commit()
+    # except: pass
     
     # Garantir Tabelas de Estatísticas
-    conn.execute('''CREATE TABLE IF NOT EXISTS exam_submissions (
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
-        exam_id INTEGER NOT NULL,
-        student_name TEXT NOT NULL,
-        score INTEGER NOT NULL,
-        total_questions INTEGER NOT NULL,
-        percentage REAL NOT NULL,
-        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-    )''')
-    conn.execute('''CREATE TABLE IF NOT EXISTS submission_details (
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
-        submission_id INTEGER NOT NULL,
-        question_id INTEGER NOT NULL,
-        is_correct BOOLEAN NOT NULL,
-        user_choice TEXT,
-        FOREIGN KEY(submission_id) REFERENCES exam_submissions(id) ON DELETE CASCADE
-    )''')
+    # conn.execute('''CREATE TABLE IF NOT EXISTS exam_submissions (
+    #     id INTEGER PRIMARY KEY AUTOINCREMENT,
+    #     exam_id INTEGER NOT NULL,
+    #     student_name TEXT NOT NULL,
+    #     score INTEGER NOT NULL,
+    #     total_questions INTEGER NOT NULL,
+    #     percentage REAL NOT NULL,
+    #     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    # )''')
+    # conn.execute('''CREATE TABLE IF NOT EXISTS submission_details (
+    #     id INTEGER PRIMARY KEY AUTOINCREMENT,
+    #     submission_id INTEGER NOT NULL,
+    #     question_id INTEGER NOT NULL,
+    #     is_correct BOOLEAN NOT NULL,
+    #     user_choice TEXT,
+    #     FOREIGN KEY(submission_id) REFERENCES exam_submissions(id) ON DELETE CASCADE
+    # )''')
     try: conn.execute('CREATE TABLE IF NOT EXISTS daily_access (access_date DATE PRIMARY KEY, count INTEGER DEFAULT 0)')
     except: pass
     try: conn.execute('ALTER TABLE files ADD COLUMN download_count INTEGER DEFAULT 0')
     except: pass
-    try: conn.execute('ALTER TABLE exams ADD COLUMN is_visible BOOLEAN DEFAULT 0')
-    except: pass
+    # try: conn.execute('ALTER TABLE exams ADD COLUMN is_visible BOOLEAN DEFAULT 0')
+    # except: pass
     # Migrations para exam_submissions (caso a tabela já existisse sem essas colunas)
-    try: conn.execute('ALTER TABLE exam_submissions ADD COLUMN total_questions INTEGER DEFAULT 0')
-    except: pass
-    try: conn.execute('ALTER TABLE exam_submissions ADD COLUMN percentage REAL DEFAULT 0')
-    except: pass
+    # try: conn.execute('ALTER TABLE exam_submissions ADD COLUMN total_questions INTEGER DEFAULT 0')
+    # except: pass
+    # try: conn.execute('ALTER TABLE exam_submissions ADD COLUMN percentage REAL DEFAULT 0')
+    # except: pass
     conn.commit()
     
     # Forçar dados do DESENVOLVEDOR...
@@ -731,247 +731,6 @@ def admin_faqs():
     conn.close()
     return render_template('admin_faqs.html', faqs=faqs)
 
-@app.route('/admin/exams/<int:exam_id>/manage', methods=['GET', 'POST'])
-def manage_exam(exam_id):
-    if 'user_id' not in session: return redirect(url_for('login'))
-    conn = get_db()
-    exam = conn.execute('SELECT * FROM exams WHERE id = ?', (exam_id,)).fetchone()
-    
-    if request.method == 'POST':
-        action = request.form.get('action')
-        if action == 'update_details':
-            title = request.form.get('title')
-            folder_id = request.form.get('folder_id')
-            is_visible = 1 if request.form.get('is_visible') else 0
-            
-            if not folder_id: folder_id = None
-            
-            conn.execute('UPDATE exams SET title = ?, folder_id = ?, is_visible = ? WHERE id = ?', 
-                         (title, folder_id, is_visible, exam_id))
-            conn.commit()
-            flash('Simulado atualizado!', 'success')
-            
-        elif action == 'delete_exam':
-            conn.execute('DELETE FROM exams WHERE id = ?', (exam_id,))
-            conn.commit()
-            conn.close()
-            flash('Simulado removido permanentemente!', 'success')
-            return redirect(url_for('admin_exams'))
-            
-    # Get questions for this exam
-    questions = conn.execute('SELECT * FROM exam_questions WHERE exam_id = ?', (exam_id,)).fetchall()
-    folders = conn.execute('SELECT * FROM folders').fetchall()
-    conn.close()
-    return render_template('admin_manage_exam.html', exam=exam, questions=questions, folders=folders)
-
-@app.route('/admin/exams', methods=['GET', 'POST'])
-def admin_exams():
-    if 'user_id' not in session: return redirect(url_for('login'))
-    conn = get_db()
-    if request.method == 'POST':
-        title = request.form.get('title')
-        folder_id = request.form.get('folder_id')
-        pdf_file = request.files.get('pdf_file')
-        if not folder_id: folder_id = None
-        
-        pdf_filename = None
-        if pdf_file and pdf_file.filename != '' and allowed_file(pdf_file.filename):
-            os.makedirs(os.path.join(app.config['UPLOAD_FOLDER'], 'exams'), exist_ok=True)
-            pdf_filename = secure_filename(f"pdf_{int(time.time())}_{pdf_file.filename}")
-            pdf_file.save(os.path.join(app.config['UPLOAD_FOLDER'], 'exams', pdf_filename))
-        
-        conn.execute('INSERT INTO exams (title, folder_id, pdf_path, is_visible) VALUES (?, ?, ?, 0)', (title, folder_id, pdf_filename))
-        conn.commit()
-        flash('Modo Prova Criado! Ele iniciará como OCULTO.', 'success')
-    
-    exams_raw = conn.execute('SELECT * FROM exams ORDER BY created_at DESC').fetchall()
-    exams = []
-    for e in exams_raw:
-        e_dict = dict(e)
-        e_dict['questions'] = conn.execute('SELECT * FROM exam_questions WHERE exam_id = ?', (e['id'],)).fetchall()
-        exams.append(e_dict)
-        
-    folders = conn.execute('SELECT * FROM folders').fetchall()
-    conn.close()
-    return render_template('admin_exams.html', exams=exams, folders=folders)
-
-@app.route('/admin/exams/<int:exam_id>/update_question/<int:question_id>', methods=['POST'])
-def update_question(exam_id, question_id):
-    if 'user_id' not in session: return redirect(url_for('login'))
-    new_option = request.form.get('correct_option')
-    conn = get_db()
-    conn.execute('UPDATE exam_questions SET correct_option = ? WHERE id = ?', (new_option, question_id))
-    conn.commit()
-    conn.close()
-    flash('Gabarito da questão atualizado!', 'success')
-    return redirect(url_for('manage_exam', exam_id=exam_id))
-
-@app.route('/admin/exams/<int:exam_id>/delete_question/<int:question_id>', methods=['POST'])
-def delete_question(exam_id, question_id):
-    if 'user_id' not in session: return redirect(url_for('login'))
-    conn = get_db()
-    q = conn.execute('SELECT * FROM exam_questions WHERE id = ?', (question_id,)).fetchone()
-    if q:
-        if q['question_image']:
-            try: os.remove(os.path.join(app.config['UPLOAD_FOLDER'], 'exams', q['question_image']))
-            except: pass
-        if q['resolution_image']:
-            try: os.remove(os.path.join(app.config['UPLOAD_FOLDER'], 'exams', q['resolution_image']))
-            except: pass
-        conn.execute('DELETE FROM exam_questions WHERE id = ?', (question_id,))
-        conn.commit()
-    conn.close()
-    flash('Questão removida!', 'success')
-    return redirect(url_for('admin_exams'))
-
-@app.route('/admin/exams/<int:exam_id>/add_question', methods=['POST'])
-def add_question(exam_id):
-    if 'user_id' not in session: return redirect(url_for('login'))
-    q_file = request.files.get('question_image')
-    r_file = request.files.get('resolution_image')
-    r_text = request.form.get('resolution_text')
-    correct_option = request.form.get('correct_option', 'A')
-    
-    q_filename = None
-    r_filename = None
-    os.makedirs(os.path.join(app.config['UPLOAD_FOLDER'], 'exams'), exist_ok=True)
-    
-    if q_file and q_file.filename != '' and allowed_file(q_file.filename):
-        q_filename = secure_filename(f"q_{exam_id}_{int(time.time())}_{q_file.filename}")
-        q_file.save(os.path.join(app.config['UPLOAD_FOLDER'], 'exams', q_filename))
-    
-    if r_file and r_file.filename != '' and allowed_file(r_file.filename):
-        r_filename = secure_filename(f"r_{exam_id}_{int(time.time())}_{r_file.filename}")
-        r_file.save(os.path.join(app.config['UPLOAD_FOLDER'], 'exams', r_filename))
-        
-    conn = get_db()
-    conn.execute('INSERT INTO exam_questions (exam_id, question_image, resolution_image, resolution_text, correct_option) VALUES (?, ?, ?, ?, ?)', (exam_id, q_filename, r_filename, r_text, correct_option))
-    conn.commit()
-    conn.close()
-    flash('Questão Adicionada!', 'success')
-    return redirect(url_for('manage_exam', exam_id=exam_id))
-
-@app.route('/admin/exams/<int:exam_id>/add_multiple', methods=['POST'])
-def add_multiple_questions(exam_id):
-    if 'user_id' not in session: return redirect(url_for('login'))
-    gabarito_text = request.form.get('gabarito_text', '').upper().replace(',', ' ').replace(';', ' ')
-    options = gabarito_text.split()
-    
-    conn = get_db()
-    for opt in options:
-        if opt in ['A', 'B', 'C', 'D', 'E']:
-            conn.execute('INSERT INTO exam_questions (exam_id, correct_option) VALUES (?, ?)', (exam_id, opt))
-    conn.commit()
-    conn.close()
-    flash(f'{len(options)} questões adicionadas ao gabarito rápido!', 'success')
-    return redirect(url_for('manage_exam', exam_id=exam_id))
-
-@app.route('/exam/<int:exam_id>', methods=['GET', 'POST'])
-def view_exam(exam_id):
-    conn = get_db()
-    exam = conn.execute('SELECT * FROM exams WHERE id = ?', (exam_id,)).fetchone()
-    if not exam:
-        conn.close()
-        return "Simulado não encontrado", 404
-        
-    # Admin e Desenvolvedor sempre podem ver
-    is_visible = dict(exam).get('is_visible', 0)
-    user_role = session.get('role')
-    if not is_visible and user_role not in ['developer', 'master']:
-        conn.close()
-        return render_template('error.html', message="Este simulado está desativado temporariamente pelo professor.")
-
-    questions = conn.execute('SELECT * FROM exam_questions WHERE exam_id = ?', (exam_id,)).fetchall()
-    
-    if request.method == 'POST':
-        student_name = request.form.get('student_name')
-        if not student_name:
-            flash('Por favor, informe seu nome completo.', 'error')
-            return redirect(url_for('view_exam', exam_id=exam_id))
-        student_name = student_name if student_name else 'Estudante Anônimo'
-        answers = request.form.to_dict()
-        results = []
-        correct_count = 0
-        for q in questions:
-            user_ans = answers.get(f'q_{q["id"]}')
-            is_correct = (user_ans == q['correct_option'])
-            if is_correct: correct_count += 1
-            results.append({
-                'id': q['id'],
-                'user_ans': user_ans,
-                'correct_ans': q['correct_option'],
-                'is_correct': is_correct,
-                'question_image': q['question_image'],
-                'resolution_image': q['resolution_image'],
-                'resolution_text': q['resolution_text']
-            })
-        
-        # Salvar Submissão para Estatísticas
-        total_q = len(questions)
-        percentage = (correct_count / total_q * 100) if total_q > 0 else 0
-        cur = conn.execute('''
-            INSERT INTO exam_submissions (exam_id, student_name, score, total_questions, percentage)
-            VALUES (?, ?, ?, ?, ?)
-        ''', (exam_id, student_name, correct_count, total_q, percentage))
-        submission_id = cur.lastrowid
-        
-        for r in results:
-            conn.execute('''
-                INSERT INTO submission_details (submission_id, question_id, is_correct, user_choice)
-                VALUES (?, ?, ?, ?)
-            ''', (submission_id, r['id'], r['is_correct'], r['user_ans']))
-        
-        conn.commit()
-        conn.close()
-        return render_template('exam_result.html', exam=exam, results=results, score=correct_count, total=total_q, student_name=student_name)
-        
-    conn.close()
-    return render_template('exam.html', exam=exam, questions=questions)
-
-@app.route('/admin/exam_stats')
-def exam_stats():
-    if 'user_id' not in session: return redirect(url_for('login'))
-    conn = get_db()
-    
-    # Médias por Exame
-    exam_analysis = conn.execute('''
-        SELECT e.id, e.title, 
-               AVG(s.percentage) as avg_score, 
-               COUNT(s.id) as total_students,
-               MAX(s.percentage) as max_score,
-               MIN(s.percentage) as min_score
-        FROM exams e
-        LEFT JOIN exam_submissions s ON e.id = s.exam_id
-        GROUP BY e.id
-        ORDER BY e.created_at DESC
-    ''').fetchall()
-    
-    # Últimas 50 submissões
-    recent_submissions = conn.execute('''
-        SELECT s.*, e.title as exam_title
-        FROM exam_submissions s
-        JOIN exams e ON s.exam_id = e.id
-        ORDER BY s.created_at DESC
-        LIMIT 50
-    ''').fetchall()
-    
-    # Questões mais erradas (Top 10)
-    failed_questions = conn.execute('''
-        SELECT q.id, q.exam_id, e.title as exam_title, q.question_image, 
-               COUNT(d.id) as total_errors
-        FROM exam_questions q
-        JOIN exams e ON q.exam_id = e.id
-        JOIN submission_details d ON q.id = d.question_id
-        WHERE d.is_correct = 0
-        GROUP BY q.id
-        ORDER BY total_errors DESC
-        LIMIT 10
-    ''').fetchall()
-    
-    conn.close()
-    return render_template('admin_exam_stats.html', 
-                           exam_analysis=exam_analysis, 
-                           recent_submissions=recent_submissions,
-                           failed_questions=failed_questions)
+# Sistema de Simulados Desativado por Solicitação do Usuário
 
 if __name__ == '__main__': app.run(debug=True, port=5000)
