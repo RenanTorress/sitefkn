@@ -147,6 +147,12 @@ def admin():
         ORDER BY f.uploaded_at DESC
     ''').fetchall()
 
+    # Early initialization for safety
+    topicos_pendentes = []
+    topicos_respondidos = []
+    daily_hits = 0
+    total_downloads = 0
+
     try:
         topicos_pendentes = conn.execute('''
             SELECT t.*, f.title as forum_name FROM topics t
@@ -168,8 +174,7 @@ def admin():
             downloads_row = conn.execute('SELECT SUM(download_count) as total FROM files').fetchone()
             total_downloads = downloads_row['total'] if downloads_row and downloads_row['total'] else 0
         except:
-            daily_hits = 0
-            total_downloads = 0
+            pass
         
     except sqlite3.OperationalError:
         topicos_pendentes = [] # Tratamento em caso do banco ainda não migrado
@@ -869,9 +874,10 @@ def view_exam(exam_id):
         conn.close()
         return "Simulado não encontrado", 404
         
-    # Admin can always view
+    # Admin e Desenvolvedor sempre podem ver
     is_visible = dict(exam).get('is_visible', 0)
-    if not is_visible and session.get('role') != 'developer':
+    user_role = session.get('role')
+    if not is_visible and user_role not in ['developer', 'master']:
         conn.close()
         return render_template('error.html', message="Este simulado está desativado temporariamente pelo professor.")
 
