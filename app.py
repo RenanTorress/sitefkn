@@ -4,6 +4,11 @@ from werkzeug.utils import secure_filename
 import os
 import sqlite3, time, datetime
 from database import get_db, init_db, OperationalError, IntegrityError
+from supabase import create_client, Client
+
+SUPABASE_URL = os.environ.get('SUPABASE_URL')
+SUPABASE_KEY = os.environ.get('SUPABASE_KEY')
+supabase: Client = create_client(SUPABASE_URL, SUPABASE_KEY) if SUPABASE_URL and SUPABASE_KEY else None
 
 app = Flask(__name__)
 app.secret_key = 'super_secret_key_change_in_production'
@@ -192,12 +197,22 @@ def edit_profile():
     if 'profile_pic' in request.files:
         file = request.files['profile_pic']
         if file and file.filename != '' and allowed_file(file.filename):
-            filename = secure_filename(f"avatar_{user_id}_{file.filename}")
-            img_dir = os.path.join(app.config['UPLOAD_FOLDER'], 'avatars')
-            os.makedirs(img_dir, exist_ok=True)
-            filepath = os.path.join(img_dir, filename)
-            file.save(filepath)
-            pic_url = url_for('static', filename='uploads/avatars/' + filename)
+            filename = f"avatar_{user_id}_{secure_filename(file.filename)}"
+            
+            if supabase:
+                # Upload to Supabase Storage
+                file_content = file.read()
+                supabase.storage.from_('avatars').upload(filename, file_content, {"upsert": "true"})
+                # Get public URL
+                pic_url = supabase.storage.from_('avatars').get_public_url(filename)
+            else:
+                # Fallback to local (not recommended for production on Render)
+                img_dir = os.path.join(app.config['UPLOAD_FOLDER'], 'avatars')
+                os.makedirs(img_dir, exist_ok=True)
+                filepath = os.path.join(img_dir, filename)
+                file.save(filepath)
+                pic_url = url_for('static', filename='uploads/avatars/' + filename)
+                
             conn.execute('UPDATE users SET profile_pic = ? WHERE id = ?', (pic_url, user_id))
             session['profile_pic'] = pic_url
             
@@ -227,18 +242,28 @@ def admin_upload():
         if not folder_id: folder_id = None
         
         if file and allowed_file(file.filename):
-            filename = secure_filename(file.filename)
-            filepath = os.path.join(app.config['UPLOAD_FOLDER'], filename)
-            file.save(filepath)
-            size = os.path.getsize(filepath)
+            filename = f"{int(time.time())}_{secure_filename(file.filename)}"
+            
+            if supabase:
+                file_content = file.read()
+                supabase.storage.from_('materiais').upload(filename, file_content)
+                file_url = supabase.storage.from_('materiais').get_public_url(filename)
+                # Use filename as filepath in DB but it will be a URL or unique Key
+                storage_path = file_url
+            else:
+                filepath = os.path.join(app.config['UPLOAD_FOLDER'], filename)
+                file.save(filepath)
+                storage_path = filename
+
+            size = len(file_content) if supabase else os.path.getsize(filepath)
             
             conn = get_db()
             conn.execute('INSERT INTO files (filename, filepath, size, folder_id, uploaded_by) VALUES (?, ?, ?, ?, ?)',
-                         (file.filename, filename, size, folder_id, session['user_id']))
+                         (file.filename, storage_path, size, folder_id, session['user_id']))
             conn.commit()
             conn.close()
             log_action(session['user_id'], 'Subiu Arquivo', f"Novo material: {file.filename}")
-            flash('Arquivo enviado!', 'success')
+            flash('Arquivo enviado para nuvem!', 'success')
         else:
             flash('Arquivo inválido ou extensão não permitida', 'error')
     return redirect(url_for('admin'))
@@ -264,19 +289,21 @@ def delete_folder():
     folder_id = request.form.get('folder_id')
     if folder_id:
         conn = get_db()
-        # Apaga os arquivos físicos
         files = conn.execute('SELECT filepath FROM files WHERE folder_id = ?', (folder_id,)).fetchall()
         for f in files:
-            try: os.remove(os.path.join(app.config['UPLOAD_FOLDER'], f['filepath']))
+            try:
+                if supabase and f['filepath'].startswith('http'):
+                    name = f['filepath'].split('/')[-1]
+                    supabase.storage.from_('materiais').remove([name])
+                else:
+                    os.remove(os.path.join(app.config['UPLOAD_FOLDER'], f['filepath']))
             except Exception: pass
         conn.execute('DELETE FROM files WHERE folder_id = ?', (folder_id,))
-        # Apaga subpastas diretas e a própria pasta
         conn.execute('DELETE FROM folders WHERE parent_id = ?', (folder_id,))
         conn.execute('DELETE FROM folders WHERE id = ?', (folder_id,))
         conn.commit()
         conn.close()
-        log_action(session['user_id'], 'Removeu Pasta', f"Deletou pasta ID: {folder_id}")
-        flash('Pasta e conteúdos excluídos com sucesso!', 'success')
+        flash('Pasta e nuvem limpas!', 'success')
     return redirect(url_for('admin'))
 
 @app.route('/admin/settings', methods=['POST'])
@@ -432,10 +459,15 @@ def view_forum(forum_id):
         if 'file' in request.files:
             file = request.files['file']
             if file and file.filename != '' and allowed_file(file.filename):
-                filename = secure_filename(file.filename)
-                full_path = os.path.join(app.config['UPLOAD_FOLDER'], 'forum', filename)
-                file.save(full_path)
-                file_path = filename
+                filename = f"forum_{int(time.time())}_{secure_filename(file.filename)}"
+                if supabase:
+                    file_content = file.read()
+                    supabase.storage.from_('materiais').upload(f"forum/{filename}", file_content)
+                    file_path = supabase.storage.from_('materiais').get_public_url(f"forum/{filename}")
+                else:
+                    full_path = os.path.join(app.config['UPLOAD_FOLDER'], 'forum', filename)
+                    file.save(full_path)
+                    file_path = filename
                 
         query = "INSERT INTO topics (forum_id, title, author_name, status) VALUES (?, ?, ?, ?) RETURNING id"
         cursor = conn.execute(query, (forum_id, title, author_name, 'respondido' if is_admin else 'aguardando'))
@@ -478,10 +510,15 @@ def view_topic(topic_id):
         if 'file' in request.files:
             file = request.files['file']
             if file and file.filename != '' and allowed_file(file.filename):
-                filename = secure_filename(file.filename)
-                full_path = os.path.join(app.config['UPLOAD_FOLDER'], 'forum', filename)
-                file.save(full_path)
-                file_path = filename
+                filename = f"forum_{int(time.time())}_{secure_filename(file.filename)}"
+                if supabase:
+                    file_content = file.read()
+                    supabase.storage.from_('materiais').upload(f"forum/{filename}", file_content)
+                    file_path = supabase.storage.from_('materiais').get_public_url(f"forum/{filename}")
+                else:
+                    full_path = os.path.join(app.config['UPLOAD_FOLDER'], 'forum', filename)
+                    file.save(full_path)
+                    file_path = filename
                 
         try: conn.execute('INSERT INTO messages (topic_id, author_name, content, is_admin, file_path, reply_to_id, user_id) VALUES (?, ?, ?, ?, ?, ?, ?)', (topic_id, author_name, content, is_admin, file_path, reply_to_id, user_id))
         except sqlite3.OperationalError: conn.execute('INSERT INTO messages (topic_id, author_name, content, is_admin, file_path, reply_to_id) VALUES (?, ?, ?, ?, ?, ?)', (topic_id, author_name, content, is_admin, file_path, reply_to_id))
@@ -536,15 +573,18 @@ def delete_file(file_id):
     conn = get_db()
     file_record = conn.execute('SELECT * FROM files WHERE id = ?', (file_id,)).fetchone()
     if file_record:
-        try: 
-            filepath = os.path.join(app.config['UPLOAD_FOLDER'], file_record['filepath'])
-            if os.path.exists(filepath): os.remove(filepath)
-        except Exception as e: pass
+        try:
+            if supabase and file_record['filepath'].startswith('http'):
+                name = file_record['filepath'].split('/')[-1]
+                supabase.storage.from_('materiais').remove([name])
+            else:
+                filepath = os.path.join(app.config['UPLOAD_FOLDER'], file_record['filepath'])
+                if os.path.exists(filepath): os.remove(filepath)
+        except Exception: pass
             
         conn.execute('DELETE FROM files WHERE id = ?', (file_id,))
         conn.commit()
-        log_action(session['user_id'], 'Removeu Arquivo', f"Deletou arquivo ID: {file_id}")
-        flash('PDF removido com sucesso!', 'success')
+        flash('PDF removido da nuvem!', 'success')
     conn.close()
     return redirect(url_for('admin'))
 
@@ -556,6 +596,8 @@ def download(file_id):
     file_record = conn.execute('SELECT * FROM files WHERE id = ?', (file_id,)).fetchone()
     conn.close()
     if file_record:
+        if file_record['filepath'].startswith('http'):
+            return redirect(file_record['filepath'])
         return send_from_directory(app.config['UPLOAD_FOLDER'], file_record['filepath'], as_attachment=True, download_name=file_record['filename'])
     return 'Arquivo nulo', 404
     
@@ -643,12 +685,19 @@ def report_bug():
     message = request.form.get('message')
     file = request.files.get('file')
     filename = None
-    if file and file.filename != '' and allowed_file(file.filename):
-        os.makedirs(os.path.join(app.config['UPLOAD_FOLDER'], 'bugs'), exist_ok=True)
-        filename = secure_filename(f"bug_{int(time.time())}_{file.filename}")
-        file.save(os.path.join(app.config['UPLOAD_FOLDER'], 'bugs', filename))
-    
     conn = get_db()
+    
+    if file and file.filename != '' and allowed_file(file.filename):
+        filename = f"bug_{int(time.time())}_{secure_filename(file.filename)}"
+        if supabase:
+            file_content = file.read()
+            supabase.storage.from_('materiais').upload(f"bugs/{filename}", file_content)
+            attachment_url = supabase.storage.from_('materiais').get_public_url(f"bugs/{filename}")
+            filename = attachment_url
+        else:
+            os.makedirs(os.path.join(app.config['UPLOAD_FOLDER'], 'bugs'), exist_ok=True)
+            file.save(os.path.join(app.config['UPLOAD_FOLDER'], 'bugs', filename))
+    
     conn.execute('INSERT INTO bug_reports (message, attachment_path) VALUES (?, ?)', (message, filename))
     conn.commit()
     conn.close()
