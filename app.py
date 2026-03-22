@@ -563,57 +563,7 @@ def download(file_id):
 def download_forum(filename): return send_from_directory(os.path.join(app.config['UPLOAD_FOLDER'], 'forum'), secure_filename(filename), as_attachment=True)
 
 with app.app_context():
-    init_db()  # Ensure tables exist
-    conn = get_db()
-    try: conn.execute('ALTER TABLE users ADD COLUMN profile_pic TEXT'); conn.commit()
-    except OperationalError: pass
-    conn.close()
-    conn = get_db()
-    
-    # Robust Migrations for Render (SQLite and Gunicorn safe)
-    try: conn.execute('ALTER TABLE users ADD COLUMN name TEXT'); conn.commit()
-    except OperationalError: pass
-    try: conn.execute('ALTER TABLE users ADD COLUMN role TEXT DEFAULT "admin"'); conn.commit()
-    except OperationalError: pass
-    try: conn.execute('ALTER TABLE bug_reports ADD COLUMN is_resolved BOOLEAN DEFAULT 0'); conn.commit()
-    except OperationalError: pass
-    # try: conn.execute('ALTER TABLE exams ADD COLUMN pdf_path TEXT'); conn.commit()
-    # except: pass
-    # try: conn.execute('ALTER TABLE exam_questions ADD COLUMN resolution_text TEXT'); conn.commit()
-    # except: pass
-    
-    try: conn.execute('ALTER TABLE topics ADD COLUMN status TEXT DEFAULT "aguardando"'); conn.commit()
-    except OperationalError: pass
-    
-    # Garantir Tabelas de Estatísticas
-    # conn.execute('''CREATE TABLE IF NOT EXISTS exam_submissions (
-    #     id INTEGER PRIMARY KEY AUTOINCREMENT,
-    #     exam_id INTEGER NOT NULL,
-    #     student_name TEXT NOT NULL,
-    #     score INTEGER NOT NULL,
-    #     total_questions INTEGER NOT NULL,
-    #     percentage REAL NOT NULL,
-    #     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-    # )''')
-    # conn.execute('''CREATE TABLE IF NOT EXISTS submission_details (
-    #     id INTEGER PRIMARY KEY AUTOINCREMENT,
-    #     submission_id INTEGER NOT NULL,
-    #     question_id INTEGER NOT NULL,
-    #     is_correct BOOLEAN NOT NULL,
-    #     user_choice TEXT,
-    #     FOREIGN KEY(submission_id) REFERENCES exam_submissions(id) ON DELETE CASCADE
-    # )''')
-    try: conn.execute('CREATE TABLE IF NOT EXISTS daily_access (access_date DATE PRIMARY KEY, count INTEGER DEFAULT 0)')
-    except OperationalError: pass
-    try: conn.execute('ALTER TABLE files ADD COLUMN download_count INTEGER DEFAULT 0')
-    except OperationalError: pass
-    # try: conn.execute('ALTER TABLE exams ADD COLUMN is_visible BOOLEAN DEFAULT 0')
-    # except: pass
-    # Migrations para exam_submissions (caso a tabela já existisse sem essas colunas)
-    # try: conn.execute('ALTER TABLE exam_submissions ADD COLUMN total_questions INTEGER DEFAULT 0')
-    # except: pass
-    # try: conn.execute('ALTER TABLE exam_submissions ADD COLUMN percentage REAL DEFAULT 0')
-    # except: pass
+    init_db()  # Ensure tables exist e schema atualizado
     
     # Rota adicional para deletar FAQ
     @app.route('/admin/faqs/delete/<int:faq_id>', methods=['POST'])
@@ -643,8 +593,7 @@ with app.app_context():
         flash('Pergunta atualizada com sucesso.', 'success')
         return redirect(url_for('admin_faqs'))
 
-    conn.commit()
-    
+    conn = get_db()
     # Forçar dados do DESENVOLVEDOR...
     dev_exists = conn.execute('SELECT * FROM users WHERE email = ?', ('desenvolper@fkn.com',)).fetchone()
     if not dev_exists:
