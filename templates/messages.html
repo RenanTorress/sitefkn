@@ -12,12 +12,14 @@
 <div class="panel-grid">
     <div style="grid-column: span 2;">
         {% for msg in messages %}
-        <div id="msg-{{ msg.id }}" style="padding: 1.5rem; border-radius: 12px; margin-bottom: 1.5rem; border: 1px solid {% if msg.admin_role == 'developer' %}#eab308{% else %}var(--border){% endif %}; background: {% if msg.admin_role == 'developer' %}rgba(234, 179, 8, 0.08){% elif msg.is_admin %}rgba(59, 130, 246, 0.08){% else %}rgba(255,255,255,0.02){% endif %}; position: relative; box-shadow: 0 4px 15px rgba(0,0,0,0.1);">
+        <div id="msg-{{ msg.id }}" style="padding: 1.5rem; border-radius: 12px; margin-bottom: 1.5rem; border: 1px solid {% if msg.admin_role == 'developer' %}#eab308{% elif msg.admin_role == 'master' %}var(--primary){% elif msg.is_admin %}#10b981{% else %}var(--border){% endif %}; background: {% if msg.admin_role == 'developer' %}rgba(234, 179, 8, 0.08){% elif msg.admin_role == 'master' %}rgba(59, 130, 246, 0.08){% elif msg.is_admin %}rgba(16, 185, 129, 0.08){% else %}rgba(255,255,255,0.02){% endif %}; position: relative; box-shadow: 0 4px 15px rgba(0,0,0,0.1);">
             
             {% if msg.admin_role == 'developer' %}
-            <span class="badge" style="background: #eab308; color: black; margin-bottom: 1rem; display: inline-block; box-shadow: 0 0 10px rgba(234, 179, 8, 0.5); font-weight: bold;">🛠️ RESPOSTA DO DESENVOLVEDOR MASTER</span>
+            <span class="badge" style="background: #eab308; color: black; margin-bottom: 1rem; display: inline-block; box-shadow: 0 0 10px rgba(234, 179, 8, 0.5); font-weight: bold;">🛠️ RESPOSTA DO DESENVOLVEDOR</span>
+            {% elif msg.admin_role == 'master' %}
+            <span class="badge" style="background: var(--primary); margin-bottom: 1rem; display: inline-block; box-shadow: 0 0 10px rgba(59, 130, 246, 0.5); font-weight: bold;">🎓 RESPOSTA DO PROFESSOR</span>
             {% elif msg.is_admin %}
-            <span class="badge" style="background: var(--primary); margin-bottom: 1rem; display: inline-block; box-shadow: 0 0 10px rgba(59, 130, 246, 0.5);">🎓 RESPOSTA OFICIAL DA ADMINISTRAÇÃO</span>
+            <span class="badge" style="background: #10b981; margin-bottom: 1rem; display: inline-block; box-shadow: 0 0 10px rgba(16, 185, 129, 0.5); font-weight: bold;">👤 RESPOSTA DO MONITOR</span>
             {% endif %}
             
             <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 1rem;">
@@ -25,14 +27,14 @@
                 <!-- AVATAR E NOME (FASE 5) -->
                 <div style="display: flex; align-items: center; gap: 0.8rem;">
                     {% if msg.is_admin %}
-                        <div style="width: 45px; height: 45px; border-radius: 50%; overflow: hidden; border: 2px solid {% if msg.admin_role == 'developer' %}#eab308{% else %}var(--primary){% endif %}; background: {% if msg.admin_role == 'developer' %}rgba(234, 179, 8, 0.2){% else %}rgba(59, 130, 246, 0.2){% endif %}; display: flex; align-items: center; justify-content: center; box-shadow: 0 0 8px {% if msg.admin_role == 'developer' %}rgba(234,179,8,0.3){% else %}rgba(59,130,246,0.3){% endif %};">
+                        <div style="width: 45px; height: 45px; border-radius: 50%; overflow: hidden; border: 2px solid {% if msg.admin_role == 'developer' %}#eab308{% elif msg.admin_role == 'master' %}var(--primary){% else %}#10b981{% endif %}; background: {% if msg.admin_role == 'developer' %}rgba(234, 179, 8, 0.2){% elif msg.admin_role == 'master' %}rgba(59, 130, 246, 0.2){% else %}rgba(16, 185, 129, 0.2){% endif %}; display: flex; align-items: center; justify-content: center; box-shadow: 0 0 8px {% if msg.admin_role == 'developer' %}rgba(234,179,8,0.3){% elif msg.admin_role == 'master' %}rgba(59,130,246,0.3){% else %}rgba(16,185,129,0.3){% endif %};">
                             {% if msg.admin_pic %}
                                 <img src="{{ msg.admin_pic }}" style="width: 100%; height: 100%; object-fit: cover;">
                             {% else %}
                                 <span style="font-size: 1.5rem;">👤</span>
                             {% endif %}
                         </div>
-                        <div style="font-weight: bold; font-size: 1.15rem; color: {% if msg.admin_role == 'developer' %}#eab308{% else %}var(--primary){% endif %};">{{ msg.admin_name or 'Professor(a)' }}</div>
+                        <div style="font-weight: bold; font-size: 1.15rem; color: {% if msg.admin_role == 'developer' %}#eab308{% elif msg.admin_role == 'master' %}var(--primary){% else %}#10b981{% endif %};">{{ msg.admin_name or 'Equipe FKN' }}</div>
                     {% else %}
                         <div style="width: 45px; height: 45px; border-radius: 50%; overflow: hidden; background: rgba(255,255,255,0.1); border: 2px solid rgba(255,255,255,0.2); display: flex; align-items: center; justify-content: center; color: white; font-weight: bold; font-size: 1.2rem;">
                             {{ msg.author_name[0]|upper }}

@@ -717,7 +717,7 @@ def resolve_bug(report_id):
     conn.commit()
     conn.close()
     flash('Erro marcado como resolvido!', 'success')
-    return redirect(url_for('admin_reports'))
+    return redirect(url_for('view_reports'))
 
 @app.route('/admin/dev_panel', methods=['GET', 'POST'])
 def dev_panel():
