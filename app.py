@@ -29,6 +29,16 @@ def format_size(size_in_bytes):
 
 app.jinja_env.filters['format_size'] = format_size
 
+def log_action(user_id, action, details=None):
+    if not user_id: return
+    try:
+        conn = get_db()
+        conn.execute('INSERT INTO logs (user_id, action, details) VALUES (?, ?, ?)', (user_id, action, details))
+        conn.commit()
+        conn.close()
+    except Exception as e:
+        print(f"Erro ao salvar log: {e}")
+
 import re
 BAD_WORDS = ['merda', 'porra', 'caralho', 'buceta', 'fuder', 'foder', 'puta', 'puto', 'cuzao', 'cuzão', 'arrombado', 'corno', 'viado', 'bosta', 'cacete', 'fdp', 'boquete', 'viadinho']
 def profanity_filter(text):
@@ -90,7 +100,7 @@ def login():
             session['role'] = user['role']
             session['email'] = user['email']
             session['name'] = user['name'] or user['email']
-            session['profile_pic'] = user['profile_pic']
+            log_action(user['id'], 'Login', f"Usuário {user['email']} entrou no sistema")
             return redirect(url_for('admin'))
         else:
             flash('Login inválido', 'error')
@@ -99,6 +109,7 @@ def login():
 
 @app.route('/logout')
 def logout():
+    log_action(session.get('user_id'), 'Logout', f"Usuário {session.get('email')} saiu do sistema")
     session.clear()
     return redirect(url_for('index'))
 
@@ -164,6 +175,7 @@ def edit_profile():
             
     conn.commit()
     conn.close()
+    log_action(user_id, 'Atualizou Perfil', f"Nome: {name}")
     flash('Seu perfil foi atualizado com sucesso!', 'success')
     return redirect(url_for('admin'))
 
@@ -174,6 +186,7 @@ def remove_banner():
     conn.execute("DELETE FROM settings WHERE key = 'home_image_url'")
     conn.commit()
     conn.close()
+    log_action(session.get('user_id'), 'Removeu Banner', "Removeu a capa da página inicial")
     flash('Capa do site explodida! Visual original restaurado.', 'success')
     return redirect(url_for('admin'))
 
@@ -196,6 +209,7 @@ def admin_upload():
                          (file.filename, filename, size, folder_id, session['user_id']))
             conn.commit()
             conn.close()
+            log_action(session['user_id'], 'Subiu Arquivo', f"Novo material: {file.filename}")
             flash('Arquivo enviado!', 'success')
         else:
             flash('Arquivo inválido ou extensão não permitida', 'error')
@@ -212,6 +226,7 @@ def create_folder():
         conn.execute('INSERT INTO folders (name, parent_id) VALUES (?, ?)', (name, parent_id))
         conn.commit()
         conn.close()
+        log_action(session['user_id'], 'Adicionou Pasta', f"Criou pasta: {name}")
         flash('Pasta criada!', 'success')
     return redirect(url_for('admin'))
 
@@ -232,6 +247,7 @@ def delete_folder():
         conn.execute('DELETE FROM folders WHERE id = ?', (folder_id,))
         conn.commit()
         conn.close()
+        log_action(session['user_id'], 'Removeu Pasta', f"Deletou pasta ID: {folder_id}")
         flash('Pasta e conteúdos excluídos com sucesso!', 'success')
     return redirect(url_for('admin'))
 
@@ -255,6 +271,7 @@ def save_settings():
             
     conn.commit()
     conn.close()
+    log_action(session['user_id'], 'Alterou Configurações', "Mudou cores/textos globais")
     flash('Configurações atualizadas para o site!', 'success')
     return redirect(url_for('admin'))
 
@@ -269,6 +286,7 @@ def add_user():
         conn.execute('INSERT INTO users (email, password_hash, name) VALUES (?, ?, ?)',
                      (email, generate_password_hash(password), name))
         conn.commit()
+        log_action(session['user_id'], 'Adicionou Admin', f"Recrutou: {email}")
         flash('Admin adicionado!', 'success')
     except sqlite3.IntegrityError:
         flash('Email já existe.', 'error')
@@ -287,6 +305,7 @@ def delete_user(user_id):
     if target and target['email'] != 'admin@admin.com':
         conn.execute('DELETE FROM users WHERE id = ?', (user_id,))
         conn.commit()
+        log_action(session['user_id'], 'Banir Admin', f"Removeu acesso de: {target['email']}")
         flash('Conta de administrador excluída.', 'success')
     conn.close()
     return redirect(url_for('admin'))
@@ -301,6 +320,7 @@ def create_forum():
         conn.execute('INSERT INTO forums (title, description) VALUES (?, ?)', (title, description))
         conn.commit()
         conn.close()
+        log_action(session['user_id'], 'Abriu Sala Fórum', f"Sala: {title}")
         flash('Sala de Fórum criada!', 'success')
     return redirect(url_for('admin'))
 
@@ -311,6 +331,7 @@ def delete_forum(forum_id):
     conn.execute('DELETE FROM forums WHERE id = ?', (forum_id,))
     conn.commit()
     conn.close()
+    log_action(session['user_id'], 'Removeu Sala Fórum', f"Sala ID: {forum_id}")
     flash('Sala removida.', 'success')
     return redirect(url_for('admin'))
 
@@ -329,6 +350,7 @@ def delete_topic(topic_id):
     conn.execute('DELETE FROM topics WHERE id = ?', (topic_id,))
     conn.commit()
     conn.close()
+    log_action(session['user_id'], 'Deletou Discussão', f"Tópico ID: {topic_id}")
     flash('Discussão apagada com sucesso.', 'success')
     if forum_id: return redirect(url_for('view_forum', forum_id=forum_id))
     return redirect(url_for('admin'))
@@ -369,6 +391,7 @@ def view_forum(forum_id):
         except sqlite3.OperationalError: conn.execute('INSERT INTO messages (topic_id, author_name, content, is_admin, file_path) VALUES (?, ?, ?, ?, ?)', (topic_id, author_name, content, is_admin, file_path))
             
         conn.commit()
+        log_action(user_id, 'Helpdesk Atendeu' if is_admin else 'Fórum Novo Tópico', f"Título: {title}")
         return redirect(url_for('view_topic', topic_id=topic_id))
 
     forum = conn.execute('SELECT * FROM forums WHERE id = ?', (forum_id,)).fetchone()
@@ -409,6 +432,7 @@ def view_topic(topic_id):
         except sqlite3.OperationalError: pass
         
         conn.commit()
+        log_action(user_id, 'Helpdesk Respondeu' if is_admin else 'Fórum Mensagem', f"No tópico ID: {topic_id}")
         return redirect(url_for('view_topic', topic_id=topic_id))
         
     try:
@@ -443,6 +467,7 @@ def delete_message(msg_id):
     conn.execute('DELETE FROM messages WHERE id = ?', (msg_id,))
     conn.commit()
     conn.close()
+    log_action(session['user_id'], 'Forum Moderou Mensagem', f"ID: {msg_id}")
     flash('Moderação ativada. Mensagem varrida do fórum.', 'success')
     return redirect(url_for('view_topic', topic_id=topic_id))
 
@@ -459,6 +484,7 @@ def delete_file(file_id):
             
         conn.execute('DELETE FROM files WHERE id = ?', (file_id,))
         conn.commit()
+        log_action(session['user_id'], 'Removeu Arquivo', f"Deletou arquivo ID: {file_id}")
         flash('PDF removido com sucesso!', 'success')
     conn.close()
     return redirect(url_for('admin'))
@@ -478,10 +504,39 @@ def download_forum(filename): return send_from_directory(os.path.join(app.config
 with app.app_context():
     init_db()  # Ensure schema exists
     conn = get_db()
-    if not conn.execute('SELECT id FROM users').fetchone():
-        conn.execute('INSERT INTO users (email, password_hash, name) VALUES (?, ?, ?)',
-                     ('admin@admin.com', generate_password_hash('123456'), 'Fundador Oficial'))
-        conn.commit()
+    
+    # Check if name column exists, if not, it means the table was created with old schema
+    # But since we are on Render with ephemeral DB or fresh install, init_db() should be enough
+    # If users table already exists without name column, this will fail.
+    # We can try to add it manually if it fails or just rely on fresh init.
+    try:
+        if not conn.execute('SELECT id FROM users').fetchone():
+            conn.execute('INSERT INTO users (email, password_hash, name) VALUES (?, ?, ?)',
+                         ('admin@admin.com', generate_password_hash('123456'), 'Fundador Oficial'))
+            conn.commit()
+    except sqlite3.OperationalError as e:
+        if 'no such column: name' in str(e):
+            conn.execute('ALTER TABLE users ADD COLUMN name TEXT')
+            conn.commit()
+            # Try insert again
+            if not conn.execute('SELECT id FROM users').fetchone():
+                conn.execute('INSERT INTO users (email, password_hash, name) VALUES (?, ?, ?)',
+                             ('admin@admin.com', generate_password_hash('123456'), 'Fundador Oficial'))
+                conn.commit()
     conn.close()
+
+@app.route('/admin/logs')
+def admin_logs():
+    if 'user_id' not in session: return redirect(url_for('login'))
+    conn = get_db()
+    logs = conn.execute('''
+        SELECT logs.*, users.name as user_name, users.email as user_email 
+        FROM logs 
+        LEFT JOIN users ON logs.user_id = users.id 
+        ORDER BY logs.created_at DESC 
+        LIMIT 500
+    ''').fetchall()
+    conn.close()
+    return render_template('admin_logs.html', logs=logs)
 
 if __name__ == '__main__': app.run(debug=True, port=5000)

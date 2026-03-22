@@ -1,0 +1,59 @@
+{% extends 'base.html' %}
+{% block content %}
+<div class="header-title" style="text-align: left; margin-bottom: 2rem; display: flex; justify-content: space-between; align-items: flex-end;">
+    <div>
+        <h1>📜 Logs de Atividade</h1>
+        <p>Acompanhe todas as ações realizadas pelos administradores na plataforma.</p>
+    </div>
+    <a href="{{ url_for('admin') }}" class="btn" style="background: rgba(255,255,255,0.1); color: white;">
+        Voltar ao Painel
+    </a>
+</div>
+
+<div class="card" style="padding: 0; overflow: hidden; border: 1px solid var(--border);">
+    <table style="width: 100%; border-collapse: collapse; color: #cbd5e1; font-size: 0.9rem;">
+        <thead style="background: rgba(0,0,0,0.5); border-bottom: 1px solid var(--border);">
+            <tr>
+                <th style="padding: 1.2rem; text-align: left; color: var(--primary);">Data/Hora</th>
+                <th style="padding: 1.2rem; text-align: left; color: var(--primary);">Administrador</th>
+                <th style="padding: 1.2rem; text-align: left; color: var(--primary);">Ação</th>
+                <th style="padding: 1.2rem; text-align: left; color: var(--primary);">Detalhes</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for log in logs %}
+            <tr style="border-bottom: 1px solid rgba(255,255,255,0.05); transition: background 0.2s;" onmouseover="this.style.background='rgba(255,255,255,0.03)'" onmouseout="this.style.background='transparent'">
+                <td style="padding: 1rem 1.2rem; color: #64748b; white-space: nowrap;">{{ log.created_at }}</td>
+                <td style="padding: 1rem 1.2rem;">
+                    <div style="font-weight: bold; color: white;">{{ log.user_name or 'Anônimo' }}</div>
+                    <div style="font-size: 0.75rem; color: #94a3b8;">{{ log.user_email }}</div>
+                </td>
+                <td style="padding: 1rem 1.2rem;">
+                    {% set bg_color = 'var(--primary)' %}
+                    {% if 'Removeu' in log.action or 'Deletou' in log.action or 'Banir' in log.action %}
+                        {% set bg_color = '#ef4444' %}
+                    {% elif 'Adicionou' in log.action or 'Subiu' in log.action %}
+                        {% set bg_color = '#10b981' %}
+                    {% endif %}
+                    <span class="badge" style="background: {{ bg_color }}; color: white; padding: 4px 8px; border-radius: 4px; font-size: 0.75rem; font-weight: bold; display: inline-block; white-space: nowrap;">
+                        {{ log.action }}
+                    </span>
+                </td>
+                <td style="padding: 1rem 1.2rem; color: #94a3b8;">{{ log.details }}</td>
+            </tr>
+            {% else %}
+            <tr>
+                <td colspan="4" style="padding: 3rem; text-align: center; color: #64748b;">Nenhum log registrado ainda.</td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+
+<style>
+    .badge {
+        display: inline-block;
+        white-space: nowrap;
+    }
+</style>
+{% endblock %}

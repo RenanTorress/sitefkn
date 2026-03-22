@@ -1,8 +1,15 @@
 {% extends 'base.html' %}
 {% block content %}
-<div class="header-title" style="text-align: left; margin-bottom: 2rem;">
-    <h1>Painel de Controle</h1>
-    <p>O centro nervoso da sua plataforma de ensino à distância.</p>
+<div class="header-title" style="text-align: left; margin-bottom: 2rem; display: flex; justify-content: space-between; align-items: flex-end;">
+    <div>
+        <h1>Painel de Controle</h1>
+        <p>O centro nervoso da sua plataforma de ensino à distância.</p>
+    </div>
+    {% if session.get('email') == 'admin@admin.com' %}
+    <a href="{{ url_for('admin_logs') }}" class="btn" style="background: var(--primary-alt); display: flex; align-items: center; gap: 0.5rem; text-decoration: none;">
+        📜 Ver Logs do Sistema
+    </a>
+    {% endif %}
 </div>
 
 <!-- 📭 CENTRAL DE NOTIFICAÇÕES (FASE 4) -->
