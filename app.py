@@ -27,40 +27,47 @@ def allowed_file(filename):
     return '.' in filename and filename.rsplit('.', 1)[1].lower() in ALLOWED_EXTENSIONS
 
 def supabase_upload(bucket, path, file_content, content_type):
-    import httpx
-    import json
-    url = f"{SUPABASE_URL}/storage/v1/object/{bucket}/{path}"
-    headers = {
-        "Authorization": f"Bearer {SUPABASE_KEY}",
-        "apikey": SUPABASE_KEY,
-        "x-upsert": "true",
-        "Content-Type": content_type
-    }
+    import tempfile
+    import os
     
+    # Salva em um arquivo temporário local e faz o upload pelo caminho da string
+    # Isso evita problemas de buffer bytes do httpx e headers (InvalidSignature em S3)
+    fd, tmp_path = tempfile.mkstemp()
     try:
-        # Tenta disparar com timeout mais estrito com httpx
-        with httpx.Client(timeout=30.0) as client:
-            res = client.post(url, headers=headers, content=file_content)
+        with os.fdopen(fd, 'wb') as f:
+            f.write(file_content)
             
-        if res.status_code >= 400:
-            error_details = res.text
-            print(f"[upload] Erro Supabase HTTP {res.status_code}: {error_details}")
-            try:
-                from flask import flash
-                flash(f"Detalhes Supabase (HTTP {res.status_code}): {error_details[:200]}", "error")
-            except: pass
-            return None
-            
-    except Exception as e:
-        print(f"[upload] Erro geral na requisição: {e}")
         try:
-            from flask import flash
-            flash(f"Erro Conexão Supabase: {str(e)[:150]}", "error")
-        except: pass
-        return None
-
-    # Constrói a URL pública manualmente (evita problema do get_public_url() retornar objeto)
-    # Formato Supabase: {URL}/storage/v1/object/public/{bucket}/{path}
+            supabase.storage.from_(bucket).upload(
+                path, tmp_path,
+                file_options={"content-type": content_type, "upsert": "true"}
+            )
+        except Exception as e1:
+            print(f"[upload] Primeira tentativa falhou (upsert): {e1}")
+            try:
+                supabase.storage.from_(bucket).remove([path])
+            except:
+                pass
+            try:
+                supabase.storage.from_(bucket).upload(
+                    path, tmp_path,
+                    file_options={"content-type": content_type}
+                )
+            except Exception as e2:
+                print(f"[upload] Erro final no Supabase: {e2}")
+                try:
+                    from flask import flash
+                    flash(f"Detalhes Supabase: Falha no upload Storage SDK {str(e2)[:100]}", "error")
+                except:
+                    pass
+                return None
+                
+    finally:
+        try:
+            os.remove(tmp_path)
+        except Exception:
+            pass
+            
     return f"{SUPABASE_URL}/storage/v1/object/public/{bucket}/{path}"
 
 def format_size(size_in_bytes):
