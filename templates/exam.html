@@ -26,7 +26,7 @@
 
     <div style="background: rgba(234, 179, 8, 0.1); padding: 1.5rem; border-radius: 12px; margin-bottom: 2rem; border: 1px solid #eab308;">
         <label style="color: #eab308; font-weight: bold; margin-bottom: 0.5rem; display: block;">Identifique-se para o Professor:</label>
-        <input type="text" name="student_name" class="form-control" placeholder="Seu Nome Completo" required style="font-size: 1.2rem; background: rgba(0,0,0,0.5);">
+        <input type="text" name="student_name" id="student_name" class="form-control" placeholder="Seu Nome Completo" required style="font-size: 1.2rem; background: rgba(0,0,0,0.5);">
     </div>
     {% for q in questions %}
     <div class="card" style="margin-bottom: 3rem; border: 1px solid var(--border); background: rgba(255,255,255,0.02); position: relative; overflow: hidden;">
@@ -54,7 +54,8 @@
     {% endfor %}
     
     <div style="text-align: center; margin-top: 5rem; margin-bottom: 5rem;">
-        <button type="submit" class="btn" style="width: 100%; height: 90px; font-size: 1.8rem; font-weight: bold; background: #10b981; color: white; box-shadow: 0 10px 30px rgba(16, 185, 129, 0.4); border:none; cursor: pointer; transition: transform 0.2s;">ENTREGAR GABARITO FINAL 🚀</button>
+        <button type="submit" id="submitBtn" class="btn" style="width: 100%; height: 90px; font-size: 1.8rem; font-weight: bold; background: #10b981; color: white; box-shadow: 0 10px 30px rgba(16, 185, 129, 0.4); border:none; cursor: pointer; transition: transform 0.2s;">ENTREGAR GABARITO FINAL 🚀</button>
+        <p id="errorMsg" style="color: #ef4444; margin-top: 1rem; display: none; font-weight: bold;">⚠️ Por favor, preencha seu nome e responda a todas as questões!</p>
     </div>
 </form>
 
@@ -97,5 +98,21 @@
     document.getElementById("countdown").style.color = "#10b981";
     document.getElementById("countdown").style.borderColor = "#10b981";
     {% endif %}
+    {% endif %}
+
+    document.getElementById("examForm").addEventListener("submit", function(e) {
+        const studentName = document.getElementById("student_name").value;
+        if (!studentName) {
+            e.preventDefault();
+            document.getElementById("errorMsg").style.display = "block";
+            window.scrollTo(0, 0);
+            return;
+        }
+        
+        const btn = document.getElementById("submitBtn");
+        btn.innerHTML = "ENVIANDO RESPOSTAS... ⏳";
+        btn.style.opacity = "0.7";
+        btn.disabled = true;
+    });
 </script>
 {% endblock %}

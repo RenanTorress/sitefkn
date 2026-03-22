@@ -12,6 +12,21 @@
     {% endif %}
 </div>
 
+<div class="panel-grid" style="margin-bottom: 2rem; display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 1rem;">
+    <div class="card" style="text-align: center; border-bottom: 4px solid #10b981;">
+        <div style="font-size: 0.8rem; color: #94a3b8; text-transform: uppercase; margin-bottom: 0.5rem;">Acessos Hoje 🚀</div>
+        <div style="font-size: 2rem; font-weight: bold; color: white;">{{ g.daily_hits }}</div>
+    </div>
+    <div class="card" style="text-align: center; border-bottom: 4px solid var(--primary);">
+        <div style="font-size: 0.8rem; color: #94a3b8; text-transform: uppercase; margin-bottom: 0.5rem;">Downloads Totais 📂</div>
+        <div style="font-size: 2rem; font-weight: bold; color: white;">{{ g.total_downloads }}</div>
+    </div>
+    <div class="card" style="text-align: center; border-bottom: 4px solid #eab308;">
+        <div style="font-size: 0.8rem; color: #94a3b8; text-transform: uppercase; margin-bottom: 0.5rem;">Pendências 📩</div>
+        <div style="font-size: 2rem; font-weight: bold; color: white;">{{ topicos_pendentes|length }}</div>
+    </div>
+</div>
+
 <!-- 📭 CENTRAL DE NOTIFICAÇÕES (FASE 4) -->
 <div class="panel-grid" style="margin-bottom: 4rem;">
     <div class="card" style="grid-column: span 2; border-color: #eab308; border-width: 2px; background: linear-gradient(135deg, rgba(234, 179, 8, 0.08), transparent);">

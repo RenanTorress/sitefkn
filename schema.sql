@@ -28,6 +28,7 @@ CREATE TABLE IF NOT EXISTS files (
     folder_id INTEGER,
     uploaded_by INTEGER,
     uploaded_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    download_count INTEGER DEFAULT 0,
     FOREIGN KEY(folder_id) REFERENCES folders(id) ON DELETE CASCADE,
     FOREIGN KEY(uploaded_by) REFERENCES users(id)
 );
@@ -146,4 +147,9 @@ CREATE TABLE IF NOT EXISTS submission_details (
     user_choice CHAR(1),
     FOREIGN KEY(submission_id) REFERENCES exam_submissions(id) ON DELETE CASCADE,
     FOREIGN KEY(question_id) REFERENCES exam_questions(id) ON DELETE CASCADE
+);
+
+CREATE TABLE IF NOT EXISTS daily_access (
+    access_date DATE PRIMARY KEY,
+    count INTEGER DEFAULT 0
 );

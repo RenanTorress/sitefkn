@@ -105,6 +105,34 @@
                     <button type="submit" class="btn" style="width: 100%; margin-top: 1rem; background: #10b981; border: none; font-weight: bold;">CRIAR GABARITO EM MASSA</button>
                 </form>
             </div>
+
+            <!-- LISTAGEM DE QUESTÕES EXISTENTES -->
+            <div style="margin-top: 2rem;">
+                <h4 style="color: white; margin-bottom: 1rem; border-bottom: 1px solid rgba(255,255,255,0.1); padding-bottom: 0.5rem;">📋 Itens Atuais do Simulado</h4>
+                <div style="display: grid; gap: 0.8rem;">
+                    {% for q in exam.questions %}
+                    <div style="background: rgba(0,0,0,0.4); padding: 1rem; border-radius: 8px; display: flex; justify-content: space-between; align-items: center; border: 1px solid rgba(255,255,255,0.05);">
+                        <div style="display: flex; align-items: center; gap: 1rem;">
+                            <span style="background: var(--primary); color: white; width: 24px; height: 24px; display: flex; align-items: center; justify-content: center; border-radius: 50%; font-size: 0.7rem; font-weight: bold;">{{ loop.index }}</span>
+                            <div style="font-size: 0.9rem; color: #cbd5e1;">
+                                <strong>Gabarito: {{ q.correct_option }}</strong>
+                                {% if q.question_image %}
+                                <span style="font-size: 0.7rem; color: #94a3b8; margin-left: 0.5rem;">[Imagem Anexada]</span>
+                                {% endif %}
+                                {% if q.resolution_text or q.resolution_image %}
+                                <span style="font-size: 0.7rem; color: #eab308; margin-left: 0.5rem;">[Com Resolução]</span>
+                                {% endif %}
+                            </div>
+                        </div>
+                        <form action="{{ url_for('delete_question', exam_id=exam.id, question_id=q.id) }}" method="POST" onsubmit="return confirm('Excluir esta questão permanentemente?');">
+                            <button type="submit" class="btn btn-danger" style="padding: 0.3rem 0.8rem; font-size: 0.7rem; background: #ef4444; color: white; border: none;">Excluir</button>
+                        </form>
+                    </div>
+                    {% else %}
+                    <p style="font-size: 0.8rem; color: #64748b; text-align: center;">Nenhuma questão cadastrada para este simulado.</p>
+                    {% endfor %}
+                </div>
+            </div>
         </div>
     </div>
     {% else %}

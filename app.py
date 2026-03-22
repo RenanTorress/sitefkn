@@ -2,7 +2,7 @@ from flask import Flask, render_template, request, redirect, url_for, session, s
 from werkzeug.security import generate_password_hash, check_password_hash
 from werkzeug.utils import secure_filename
 import os
-import sqlite3, time
+import sqlite3, time, datetime
 from database import get_db, init_db
 
 app = Flask(__name__)
@@ -55,6 +55,11 @@ def load_settings():
     conn = get_db()
     settings_rows = conn.execute('SELECT key, value FROM settings').fetchall()
     g.settings = {row['key']: row['value'] for row in settings_rows}
+    
+    # Track Daily Access
+    today = datetime.date.today().isoformat()
+    conn.execute('INSERT INTO daily_access (access_date, count) VALUES (?, 1) ON CONFLICT(access_date) DO UPDATE SET count = count + 1', (today,))
+    conn.commit()
     conn.close()
 
 @app.route('/')
@@ -84,7 +89,12 @@ def materiais(folder_id=None):
         files = conn.execute('SELECT * FROM files WHERE folder_id IS NULL ORDER BY filename').fetchall()
         
     # Get Exams for this folder
-    exams = conn.execute('SELECT * FROM exams WHERE folder_id = ? OR (folder_id IS NULL AND ? IS NULL)', (folder_id, folder_id)).fetchall()
+    now = datetime.datetime.now().isoformat()
+    exams = conn.execute('''
+        SELECT * FROM exams 
+        WHERE (folder_id = ? OR (folder_id IS NULL AND ? IS NULL))
+        AND (start_at IS NULL OR start_at <= ?)
+    ''', (folder_id, folder_id, now)).fetchall()
     
     conn.close()
     return render_template('materiais.html', current_folder=current_folder, breadcrumbs=breadcrumbs, subfolders=subfolders, files=files, exams=exams)
@@ -142,6 +152,15 @@ def admin():
             JOIN forums f ON t.forum_id = f.id
             WHERE t.status = 'respondido' ORDER BY t.created_at DESC
         ''').fetchall()
+        
+        # Stats for Admin
+        today = datetime.date.today().isoformat()
+        daily_hits = conn.execute('SELECT count FROM daily_access WHERE access_date = ?', (today,)).fetchone()
+        g.daily_hits = daily_hits['count'] if daily_hits else 0
+        
+        total_downloads = conn.execute('SELECT SUM(download_count) as total FROM files').fetchone()
+        g.total_downloads = total_downloads['total'] if total_downloads['total'] else 0
+        
     except sqlite3.OperationalError:
         topicos_pendentes = [] # Tratamento em caso do banco ainda não migrado
         topicos_respondidos = []
@@ -521,6 +540,8 @@ def delete_file(file_id):
 @app.route('/download/<int:file_id>')
 def download(file_id):
     conn = get_db()
+    conn.execute('UPDATE files SET download_count = download_count + 1 WHERE id = ?', (file_id,))
+    conn.commit()
     file_record = conn.execute('SELECT * FROM files WHERE id = ?', (file_id,)).fetchone()
     conn.close()
     if file_record:
@@ -708,10 +729,34 @@ def admin_exams():
         conn.commit()
         flash('Modo Prova Criado!', 'success')
     
-    exams = conn.execute('SELECT * FROM exams ORDER BY created_at DESC').fetchall()
+    exams_raw = conn.execute('SELECT * FROM exams ORDER BY created_at DESC').fetchall()
+    exams = []
+    for e in exams_raw:
+        e_dict = dict(e)
+        e_dict['questions'] = conn.execute('SELECT * FROM exam_questions WHERE exam_id = ?', (e['id'],)).fetchall()
+        exams.append(e_dict)
+        
     folders = conn.execute('SELECT * FROM folders').fetchall()
     conn.close()
     return render_template('admin_exams.html', exams=exams, folders=folders)
+
+@app.route('/admin/exams/<int:exam_id>/delete_question/<int:question_id>', methods=['POST'])
+def delete_question(exam_id, question_id):
+    if 'user_id' not in session: return redirect(url_for('login'))
+    conn = get_db()
+    q = conn.execute('SELECT * FROM exam_questions WHERE id = ?', (question_id,)).fetchone()
+    if q:
+        if q['question_image']:
+            try: os.remove(os.path.join(app.config['UPLOAD_FOLDER'], 'exams', q['question_image']))
+            except: pass
+        if q['resolution_image']:
+            try: os.remove(os.path.join(app.config['UPLOAD_FOLDER'], 'exams', q['resolution_image']))
+            except: pass
+        conn.execute('DELETE FROM exam_questions WHERE id = ?', (question_id,))
+        conn.commit()
+    conn.close()
+    flash('Questão removida!', 'success')
+    return redirect(url_for('admin_exams'))
 
 @app.route('/admin/exams/<int:exam_id>/add_question', methods=['POST'])
 def add_question(exam_id):
@@ -759,6 +804,21 @@ def add_multiple_questions(exam_id):
 def view_exam(exam_id):
     conn = get_db()
     exam = conn.execute('SELECT * FROM exams WHERE id = ?', (exam_id,)).fetchone()
+    if not exam:
+        conn.close()
+        return "Simulado não encontrado", 404
+        
+    now = datetime.datetime.now().isoformat()
+    # Check start time
+    if exam['start_at'] and now < exam['start_at'] and session.get('role') != 'developer':
+        conn.close()
+        return render_template('error.html', message=f"Este simulado ainda não começou. Estará disponível em {exam['start_at'].replace('T', ' ')}")
+    
+    # Check end time
+    if exam['end_at'] and now > exam['end_at'] and session.get('role') != 'developer':
+        # Admin can view even after end, but student might be blocked or see results only
+        pass
+
     questions = conn.execute('SELECT * FROM exam_questions WHERE exam_id = ?', (exam_id,)).fetchall()
     
     if request.method == 'POST':

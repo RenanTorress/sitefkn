@@ -48,6 +48,7 @@
         </div>
     </div>
 
+        {% if not r.is_correct %}
         {% if r.resolution_image or r.resolution_text %}
         <div style="border-top: 1px dashed var(--border); padding-top: 1.5rem; margin-top: 2rem;">
             <p style="color: #eab308; font-weight: bold; margin-bottom: 1.2rem; display: flex; align-items: center; gap: 0.5rem;">
@@ -60,13 +61,14 @@
                 {{ r.resolution_text }}
             </div>
             {% endif %}
-
+ 
             {% if r.resolution_image %}
             <div style="text-align: center;">
                 <img src="{{ url_for('static', filename='uploads/exams/' + r.resolution_image) }}" style="max-width: 100%; border-radius: 8px; filter: drop-shadow(0 0 20px rgba(234, 179, 8, 0.1));">
             </div>
             {% endif %}
         </div>
+        {% endif %}
         {% endif %}
 </div>
 {% endfor %}
