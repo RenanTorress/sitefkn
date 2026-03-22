@@ -8,6 +8,15 @@ from supabase import create_client, Client
 
 SUPABASE_URL = os.environ.get('SUPABASE_URL')
 SUPABASE_KEY = os.environ.get('SUPABASE_KEY')
+
+# Auto-correção caso o usuário tenha colado a URL do S3 (que termina com /storage/v1/s3)
+if SUPABASE_URL and '.storage.supabase.co' in SUPABASE_URL:
+    # Extrai o project ID (ex: https://mokogv... -> mokogv...)
+    import re
+    m = re.search(r'https://([^.]+)\.storage\.supabase\.co', SUPABASE_URL)
+    if m:
+        SUPABASE_URL = f"https://{m.group(1)}.supabase.co"
+
 supabase: Client = create_client(SUPABASE_URL, SUPABASE_KEY) if SUPABASE_URL and SUPABASE_KEY else None
 
 app = Flask(__name__)
