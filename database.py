@@ -50,6 +50,14 @@ def get_db():
                 raise e
         
         conn.execute = execute_wrapper
+        # Define timeout razoável para todas as queries desta conexão
+        try:
+            cur = conn.cursor()
+            cur.execute("SET statement_timeout = '30s'")
+            conn.commit()
+            cur.close()
+        except Exception:
+            pass
         return conn
     else:
         # SQLite (Local)
