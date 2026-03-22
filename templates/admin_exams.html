@@ -10,7 +10,7 @@
 
 <div class="panel-grid">
     <div class="card" style="border: 2px solid #eab308;">
-        <h2 style="color: #eab308; margin-bottom: 1.5rem;">1. Criar Novo Simulado Profissional</h2>
+        <h2 style="color: #eab308; margin-bottom: 1.5rem;">1. Criar Novo Simulado</h2>
         <form method="POST" enctype="multipart/form-data">
             <div class="form-group">
                 <label>Título do Simulado:</label>
@@ -18,8 +18,7 @@
             </div>
             
             <div class="form-group">
-                <label style="color: var(--primary); font-weight: bold;">📄 Upload do PDF Inteiro (Opcional):</label>
-                <p style="font-size: 0.8rem; color: #94a3b8; margin-bottom: 0.5rem;">Se enviado, o aluno verá o PDF acima das questões para consulta.</p>
+                <label style="color: var(--primary); font-weight: bold;">📄 PDF da Questões (Opcional):</label>
                 <input type="file" name="pdf_file" class="form-control" accept=".pdf">
             </div>
 
@@ -33,48 +32,28 @@
                 </select>
             </div>
 
-            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem;">
-                <div class="form-group">
-                    <label>Data de Início:</label>
-                    <input type="date" name="start_date" class="form-control">
-                </div>
-                <div class="form-group">
-                    <label>Hora de Início:</label>
-                    <input type="time" name="start_time" class="form-control">
-                </div>
-            </div>
-
-            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem;">
-                <div class="form-group">
-                    <label style="color: #ef4444;">Data de Expiração:</label>
-                    <input type="date" name="end_date" class="form-control">
-                </div>
-                <div class="form-group">
-                    <label style="color: #ef4444;">Hora de Expiração:</label>
-                    <input type="time" name="end_time" class="form-control">
-                </div>
-            </div>
-
-            <button type="submit" class="btn" style="width: 100%; background: #eab308; color: black; font-weight: bold; margin-top: 1rem;">CRIAR SIMULADO TÉCNICO ✅</button>
+            <button type="submit" class="btn" style="width: 100%; background: #eab308; color: black; font-weight: bold; margin-top: 1rem;">CRIAR SIMULADO ✅</button>
+            <p style="font-size: 0.75rem; color: #94a3b8; text-align: center; margin-top: 0.5rem;">Ele será criado como OCULTO. Entre na pasta dele para ativar.</p>
         </form>
     </div>
 </div>
 
-<h2 style="margin-top: 4rem; margin-bottom: 2rem;">2. Meus Simulados Ativos</h2>
+<h2 style="margin-top: 4rem; margin-bottom: 2rem;">2. Meus Simulados</h2>
 <div class="panel-grid">
     {% for exam in exams %}
-    <div class="card" style="border: 2px solid {% if exam.end_at %}#ef4444{% else %}#eab308{% endif %}; background: rgba(0,0,0,0.3); transition: transform 0.2s; cursor: pointer;" onclick="window.location='{{ url_for('manage_exam', exam_id=exam.id) }}'">
+    <div class="card" style="border: 2px solid {% if exam.is_visible %}#10b981{% else %}#64748b{% endif %}; background: rgba(0,0,0,0.3); transition: transform 0.2s; cursor: pointer;" onclick="window.location='{{ url_for('manage_exam', exam_id=exam.id) }}'">
         <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 1rem;">
             <div>
                 <h3 style="color: white; margin-bottom: 0.5rem;">📁 {{ exam.title }}</h3>
-                <span style="font-size: 0.8rem; color: #94a3b8;">📅 Início: {{ exam.start_at[11:] if exam.start_at else 'Imediato' }} | {{ exam.questions|length }} Questões</span>
+                <div style="display: flex; gap: 0.5rem; align-items: center;">
+                    <span style="background: {% if exam.is_visible %}#10b981{% else %}#64748b{% endif %}; color: white; font-size: 0.7rem; padding: 0.2rem 0.6rem; border-radius: 4px; font-weight: bold;">
+                        {% if exam.is_visible %}VISÍVEL{% else %}OCULTO{% endif %}
+                    </span>
+                    <span style="font-size: 0.8rem; color: #94a3b8;">{{ exam.questions|length }} Questões</span>
+                </div>
             </div>
-            <a href="{{ url_for('manage_exam', exam_id=exam.id) }}" class="btn" style="padding: 0.5rem 1rem; background: #eab308; color: black; font-weight: bold; border: none;">ABRIR PASTA</a>
+            <a href="{{ url_for('manage_exam', exam_id=exam.id) }}" class="btn" style="padding: 0.5rem 1rem; background: #eab308; color: black; font-weight: bold; border: none;">GERENCIAR</a>
         </div>
-        
-        {% if exam.end_at %}
-        <div style="font-size: 0.75rem; color: #ef4444; font-weight: bold;">⚠️ Expira em: {{ exam.end_at.replace('T', ' ') }}</div>
-        {% endif %}
     </div>
     {% else %}
     <p style="color: #64748b; grid-column: span 2; text-align: center;">Nenhum simulado criado.</p>

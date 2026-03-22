@@ -92,12 +92,11 @@ def materiais(folder_id=None):
         files = conn.execute('SELECT * FROM files WHERE folder_id IS NULL ORDER BY filename').fetchall()
         
     # Get Exams for this folder
-    now = datetime.datetime.now().isoformat()
     exams = conn.execute('''
         SELECT * FROM exams 
         WHERE (folder_id = ? OR (folder_id IS NULL AND ? IS NULL))
-        AND (start_at IS NULL OR start_at <= ?)
-    ''', (folder_id, folder_id, now)).fetchall()
+        AND (is_visible = 1)
+    ''', (folder_id, folder_id)).fetchall()
     
     conn.close()
     return render_template('materiais.html', current_folder=current_folder, breadcrumbs=breadcrumbs, subfolders=subfolders, files=files, exams=exams)
@@ -596,6 +595,8 @@ with app.app_context():
     except: pass
     try: conn.execute('ALTER TABLE files ADD COLUMN download_count INTEGER DEFAULT 0')
     except: pass
+    try: conn.execute('ALTER TABLE exams ADD COLUMN is_visible BOOLEAN DEFAULT 0')
+    except: pass
     conn.commit()
     
     # Forçar dados do DESENVOLVEDOR...
@@ -724,17 +725,12 @@ def manage_exam(exam_id):
         if action == 'update_details':
             title = request.form.get('title')
             folder_id = request.form.get('folder_id')
-            start_date = request.form.get('start_date')
-            start_time = request.form.get('start_time')
-            end_date = request.form.get('end_date')
-            end_time = request.form.get('end_time')
+            is_visible = 1 if request.form.get('is_visible') else 0
             
-            start_at = f"{start_date}T{start_time}" if start_date and start_time else None
-            end_at = f"{end_date}T{end_time}" if end_date and end_time else None
             if not folder_id: folder_id = None
             
-            conn.execute('UPDATE exams SET title = ?, folder_id = ?, start_at = ?, end_at = ? WHERE id = ?', 
-                         (title, folder_id, start_at, end_at, exam_id))
+            conn.execute('UPDATE exams SET title = ?, folder_id = ?, is_visible = ? WHERE id = ?', 
+                         (title, folder_id, is_visible, exam_id))
             conn.commit()
             flash('Simulado atualizado!', 'success')
             
@@ -758,14 +754,7 @@ def admin_exams():
     if request.method == 'POST':
         title = request.form.get('title')
         folder_id = request.form.get('folder_id')
-        start_date = request.form.get('start_date')
-        start_time = request.form.get('start_time')
-        end_date = request.form.get('end_date')
-        end_time = request.form.get('end_time')
         pdf_file = request.files.get('pdf_file')
-        
-        start_at = f"{start_date}T{start_time}" if start_date and start_time else None
-        end_at = f"{end_date}T{end_time}" if end_date and end_time else None
         if not folder_id: folder_id = None
         
         pdf_filename = None
@@ -774,9 +763,9 @@ def admin_exams():
             pdf_filename = secure_filename(f"pdf_{int(time.time())}_{pdf_file.filename}")
             pdf_file.save(os.path.join(app.config['UPLOAD_FOLDER'], 'exams', pdf_filename))
         
-        conn.execute('INSERT INTO exams (title, folder_id, pdf_path, start_at, end_at) VALUES (?, ?, ?, ?, ?)', (title, folder_id, pdf_filename, start_at, end_at))
+        conn.execute('INSERT INTO exams (title, folder_id, pdf_path, is_visible) VALUES (?, ?, ?, 0)', (title, folder_id, pdf_filename))
         conn.commit()
-        flash('Modo Prova Criado!', 'success')
+        flash('Modo Prova Criado! Ele iniciará como OCULTO.', 'success')
     
     exams_raw = conn.execute('SELECT * FROM exams ORDER BY created_at DESC').fetchall()
     exams = []
@@ -868,16 +857,10 @@ def view_exam(exam_id):
         conn.close()
         return "Simulado não encontrado", 404
         
-    now = datetime.datetime.now().isoformat()
-    # Check start time
-    if exam['start_at'] and now < exam['start_at'] and session.get('role') != 'developer':
+    # Admin can always view
+    if not exam['is_visible'] and session.get('role') != 'developer':
         conn.close()
-        return render_template('error.html', message=f"Este simulado ainda não começou. Estará disponível em {exam['start_at'].replace('T', ' ')}")
-    
-    # Check end time
-    if exam['end_at'] and now > exam['end_at'] and session.get('role') != 'developer':
-        # Admin can view even after end, but student might be blocked or see results only
-        pass
+        return render_template('error.html', message="Este simulado está desativado temporariamente pelo professor.")
 
     questions = conn.execute('SELECT * FROM exam_questions WHERE exam_id = ?', (exam_id,)).fetchall()
     
