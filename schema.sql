@@ -1,9 +1,10 @@
 CREATE TABLE IF NOT EXISTS users (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    id SERIAL PRIMARY KEY,
     email TEXT UNIQUE NOT NULL,
     password_hash TEXT NOT NULL,
     name TEXT,
     role TEXT DEFAULT 'admin',
+    profile_pic TEXT,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
@@ -13,7 +14,7 @@ CREATE TABLE IF NOT EXISTS settings (
 );
 
 CREATE TABLE IF NOT EXISTS folders (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    id SERIAL PRIMARY KEY,
     name TEXT NOT NULL,
     parent_id INTEGER,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
@@ -21,10 +22,10 @@ CREATE TABLE IF NOT EXISTS folders (
 );
 
 CREATE TABLE IF NOT EXISTS files (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    id SERIAL PRIMARY KEY,
     filename TEXT NOT NULL,
     filepath TEXT NOT NULL,
-    size INTEGER NOT NULL,
+    size BIGINT NOT NULL,
     folder_id INTEGER,
     uploaded_by INTEGER,
     uploaded_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
@@ -34,27 +35,28 @@ CREATE TABLE IF NOT EXISTS files (
 );
 
 CREATE TABLE IF NOT EXISTS forums (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    id SERIAL PRIMARY KEY,
     title TEXT NOT NULL,
     description TEXT,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
 CREATE TABLE IF NOT EXISTS topics (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    id SERIAL PRIMARY KEY,
     forum_id INTEGER NOT NULL,
     title TEXT NOT NULL,
     author_name TEXT NOT NULL,
+    status TEXT DEFAULT 'aguardando',
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     FOREIGN KEY(forum_id) REFERENCES forums(id) ON DELETE CASCADE
 );
 
 CREATE TABLE IF NOT EXISTS messages (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    id SERIAL PRIMARY KEY,
     topic_id INTEGER NOT NULL,
     author_name TEXT NOT NULL,
     content TEXT NOT NULL,
-    is_admin BOOLEAN DEFAULT 0,
+    is_admin BOOLEAN DEFAULT FALSE,
     file_path TEXT,
     reply_to_id INTEGER,
     user_id INTEGER,
@@ -64,15 +66,15 @@ CREATE TABLE IF NOT EXISTS messages (
 );
 
 CREATE TABLE IF NOT EXISTS bug_reports (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    id SERIAL PRIMARY KEY,
     message TEXT NOT NULL,
     attachment_path TEXT,
-    is_resolved BOOLEAN DEFAULT 0,
+    is_resolved BOOLEAN DEFAULT FALSE,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
 CREATE TABLE IF NOT EXISTS exams (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    id SERIAL PRIMARY KEY,
     title TEXT NOT NULL,
     folder_id INTEGER,
     pdf_path TEXT,
@@ -83,17 +85,17 @@ CREATE TABLE IF NOT EXISTS exams (
 );
 
 CREATE TABLE IF NOT EXISTS exam_questions (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    id SERIAL PRIMARY KEY,
     exam_id INTEGER NOT NULL,
     question_image TEXT,
     resolution_image TEXT,
     resolution_text TEXT,
-    correct_option CHAR(1), -- A, B, C, D, E
+    correct_option CHAR(1),
     FOREIGN KEY(exam_id) REFERENCES exams(id) ON DELETE CASCADE
 );
 
 CREATE TABLE IF NOT EXISTS faqs (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    id SERIAL PRIMARY KEY,
     question TEXT NOT NULL,
     answer TEXT NOT NULL,
     keyword TEXT,
@@ -102,7 +104,7 @@ CREATE TABLE IF NOT EXISTS faqs (
 );
 
 CREATE TABLE IF NOT EXISTS logs (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    id SERIAL PRIMARY KEY,
     user_id INTEGER,
     action TEXT NOT NULL,
     details TEXT,
@@ -110,26 +112,8 @@ CREATE TABLE IF NOT EXISTS logs (
     FOREIGN KEY(user_id) REFERENCES users(id)
 );
 
--- Dados base
-INSERT OR IGNORE INTO settings (key, value) VALUES ('site_name', 'Física com FKN');
-INSERT OR IGNORE INTO settings (key, value) VALUES ('primary_color', '#3b82f6');
-INSERT OR IGNORE INTO settings (key, value) VALUES ('home_announcement', 'Bem-vindos à nova plataforma de estudos! Fiquem de olho nos novos materiais adicionados e tirem suas dúvidas no fórum.');
-INSERT OR IGNORE INTO settings (key, value) VALUES ('home_about', 'Este espaço é dedicado ao seu aprendizado. Acesse diariamente a área de materiais para fazer o download do currículo da disciplina, listas de exercícios e guias práticos.');
-INSERT OR IGNORE INTO settings (key, value) VALUES ('dev_instagram_url', 'https://www.instagram.com/renantorres.dev/');
-INSERT OR IGNORE INTO settings (key, value) VALUES ('dev_name', 'Renan Torres');
-INSERT OR IGNORE INTO settings (key, value) VALUES ('show_dev_name', '1');
-INSERT OR IGNORE INTO settings (key, value) VALUES ('x_url', '');
-INSERT OR IGNORE INTO settings (key, value) VALUES ('facebook_url', '');
-INSERT OR IGNORE INTO settings (key, value) VALUES ('whatsapp_url', '');
-INSERT OR IGNORE INTO settings (key, value) VALUES ('footer_rights', 'Física com FKN - Todos os direitos reservados.');
-
--- Base FAQ
-INSERT OR IGNORE INTO faqs (question, answer, keyword, redirect_url) VALUES ('Onde acesso os materiais?', 'Você pode acessar todos os materiais e PDFs na nossa área exclusiva de materiais.', 'materiais', '/materiais');
-INSERT OR IGNORE INTO faqs (question, answer, keyword, redirect_url) VALUES ('Como vejo minha turma?', 'Sua turma é definida pelo seu cronograma de estudos no painel principal ou entrando em contato conosco pelo fórum.', 'fórum', '/forum');
-INSERT OR IGNORE INTO faqs (question, answer, keyword, redirect_url) VALUES ('Onde tiro as dúvidas?', 'Temos uma central de Helpdesk pronta para te ouvir em tempo real através dos fóruns de cada matéria.', 'Helpdesk', '/forum');
-
 CREATE TABLE IF NOT EXISTS exam_submissions (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    id SERIAL PRIMARY KEY,
     exam_id INTEGER NOT NULL,
     student_name TEXT NOT NULL,
     score INTEGER NOT NULL,
@@ -140,7 +124,7 @@ CREATE TABLE IF NOT EXISTS exam_submissions (
 );
 
 CREATE TABLE IF NOT EXISTS submission_details (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    id SERIAL PRIMARY KEY,
     submission_id INTEGER NOT NULL,
     question_id INTEGER NOT NULL,
     is_correct BOOLEAN NOT NULL,
@@ -153,3 +137,21 @@ CREATE TABLE IF NOT EXISTS daily_access (
     access_date DATE PRIMARY KEY,
     count INTEGER DEFAULT 0
 );
+
+-- Dados base usando sintaxe PostgreSQL
+INSERT INTO settings (key, value) VALUES ('site_name', 'Física com FKN') ON CONFLICT (key) DO NOTHING;
+INSERT INTO settings (key, value) VALUES ('primary_color', '#3b82f6') ON CONFLICT (key) DO NOTHING;
+INSERT INTO settings (key, value) VALUES ('home_announcement', 'Bem-vindos à nova plataforma de estudos!') ON CONFLICT (key) DO NOTHING;
+INSERT INTO settings (key, value) VALUES ('home_about', 'Este espaço é dedicado ao seu aprendizado.') ON CONFLICT (key) DO NOTHING;
+INSERT INTO settings (key, value) VALUES ('dev_instagram_url', 'https://www.instagram.com/renantorres.dev/') ON CONFLICT (key) DO NOTHING;
+INSERT INTO settings (key, value) VALUES ('dev_name', 'Renan Torres') ON CONFLICT (key) DO NOTHING;
+INSERT INTO settings (key, value) VALUES ('show_dev_name', '1') ON CONFLICT (key) DO NOTHING;
+INSERT INTO settings (key, value) VALUES ('x_url', '') ON CONFLICT (key) DO NOTHING;
+INSERT INTO settings (key, value) VALUES ('facebook_url', '') ON CONFLICT (key) DO NOTHING;
+INSERT INTO settings (key, value) VALUES ('whatsapp_url', '') ON CONFLICT (key) DO NOTHING;
+INSERT INTO settings (key, value) VALUES ('footer_rights', 'Física com FKN - Todos os direitos reservados.') ON CONFLICT (key) DO NOTHING;
+
+-- Base FAQ
+INSERT INTO faqs (question, answer, keyword, redirect_url) VALUES ('Onde acesso os materiais?', 'Você pode acessar todos os materiais e PDFs na nossa área exclusiva de materiais.', 'materiais', '/materiais') ON CONFLICT (id) DO NOTHING;
+INSERT INTO faqs (question, answer, keyword, redirect_url) VALUES ('Como vejo minha turma?', 'Sua turma é definida pelo seu cronograma de estudos no painel principal.', 'fórum', '/forum') ON CONFLICT (id) DO NOTHING;
+INSERT INTO faqs (question, answer, keyword, redirect_url) VALUES ('Onde tiro as dúvidas?', 'Temos uma central de Helpdesk pronta para te ouvir em tempo real através dos fóruns de cada matéria.', 'Helpdesk', '/forum') ON CONFLICT (id) DO NOTHING;

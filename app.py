@@ -3,7 +3,7 @@ from werkzeug.security import generate_password_hash, check_password_hash
 from werkzeug.utils import secure_filename
 import os
 import sqlite3, time, datetime
-from database import get_db, init_db
+from database import get_db, init_db, OperationalError, IntegrityError
 
 app = Flask(__name__)
 app.secret_key = 'super_secret_key_change_in_production'
@@ -165,7 +165,7 @@ def admin():
             WHERE t.status = 'respondido' ORDER BY t.created_at DESC
         ''').fetchall()
         
-    except sqlite3.OperationalError:
+    except OperationalError:
         topicos_pendentes = [] 
         topicos_respondidos = []
         
@@ -286,7 +286,7 @@ def save_settings():
     for key in ['site_name', 'primary_color', 'home_announcement', 'home_about', 'instagram_url']:
         val = request.form.get(key)
         if val is not None:
-            conn.execute("INSERT INTO settings (key, value) VALUES (?, ?) ON CONFLICT(key) DO UPDATE SET value=?", (key, val, val))
+            conn.execute("INSERT INTO settings (key, value) VALUES (?, ?) ON CONFLICT(key) DO UPDATE SET value=EXCLUDED.value", (key, val))
             
     if 'home_image' in request.files:
         file = request.files['home_image']
@@ -323,7 +323,7 @@ def add_user():
         conn.commit()
         log_action(session['user_id'], f'Adicionou {role.upper()}', f"Recrutou: {email}")
         flash(f'Administrador ({role}) adicionado!', 'success')
-    except sqlite3.IntegrityError:
+    except IntegrityError:
         flash('Email já existe.', 'error')
     finally:
         conn.close()
@@ -437,8 +437,13 @@ def view_forum(forum_id):
                 file.save(full_path)
                 file_path = filename
                 
-        cursor = conn.execute("INSERT INTO topics (forum_id, title, author_name, status) VALUES (?, ?, ?, ?)", (forum_id, title, author_name, 'respondido' if is_admin else 'aguardando'))
-        topic_id = cursor.lastrowid
+        query = "INSERT INTO topics (forum_id, title, author_name, status) VALUES (?, ?, ?, ?) RETURNING id"
+        cursor = conn.execute(query, (forum_id, title, author_name, 'respondido' if is_admin else 'aguardando'))
+        
+        if os.environ.get('DATABASE_URL'):
+            topic_id = cursor.fetchone()['id']
+        else:
+            topic_id = cursor.lastrowid
         
         # Injeção manual se backend for mais velho 
         try: conn.execute('INSERT INTO messages (topic_id, author_name, content, is_admin, file_path, user_id) VALUES (?, ?, ?, ?, ?, ?)', (topic_id, author_name, content, is_admin, file_path, user_id))
@@ -498,7 +503,7 @@ def view_topic(topic_id):
             LEFT JOIN users u ON m1.user_id = u.id
             WHERE m1.topic_id = ? ORDER BY m1.created_at ASC
         ''', (topic_id,)).fetchall()
-    except sqlite3.OperationalError:
+    except OperationalError:
         messages = conn.execute('''
             SELECT m1.*, m2.content as reply_to_content, m2.author_name as reply_to_author 
             FROM messages m1 LEFT JOIN messages m2 ON m1.reply_to_id = m2.id 
@@ -561,24 +566,24 @@ with app.app_context():
     init_db()  # Ensure tables exist
     conn = get_db()
     try: conn.execute('ALTER TABLE users ADD COLUMN profile_pic TEXT'); conn.commit()
-    except: pass
+    except OperationalError: pass
     conn.close()
     conn = get_db()
     
     # Robust Migrations for Render (SQLite and Gunicorn safe)
     try: conn.execute('ALTER TABLE users ADD COLUMN name TEXT'); conn.commit()
-    except: pass
+    except OperationalError: pass
     try: conn.execute('ALTER TABLE users ADD COLUMN role TEXT DEFAULT "admin"'); conn.commit()
-    except: pass
+    except OperationalError: pass
     try: conn.execute('ALTER TABLE bug_reports ADD COLUMN is_resolved BOOLEAN DEFAULT 0'); conn.commit()
-    except: pass
+    except OperationalError: pass
     # try: conn.execute('ALTER TABLE exams ADD COLUMN pdf_path TEXT'); conn.commit()
     # except: pass
     # try: conn.execute('ALTER TABLE exam_questions ADD COLUMN resolution_text TEXT'); conn.commit()
     # except: pass
     
     try: conn.execute('ALTER TABLE topics ADD COLUMN status TEXT DEFAULT "aguardando"'); conn.commit()
-    except: pass
+    except OperationalError: pass
     
     # Garantir Tabelas de Estatísticas
     # conn.execute('''CREATE TABLE IF NOT EXISTS exam_submissions (
@@ -599,9 +604,9 @@ with app.app_context():
     #     FOREIGN KEY(submission_id) REFERENCES exam_submissions(id) ON DELETE CASCADE
     # )''')
     try: conn.execute('CREATE TABLE IF NOT EXISTS daily_access (access_date DATE PRIMARY KEY, count INTEGER DEFAULT 0)')
-    except: pass
+    except OperationalError: pass
     try: conn.execute('ALTER TABLE files ADD COLUMN download_count INTEGER DEFAULT 0')
-    except: pass
+    except OperationalError: pass
     # try: conn.execute('ALTER TABLE exams ADD COLUMN is_visible BOOLEAN DEFAULT 0')
     # except: pass
     # Migrations para exam_submissions (caso a tabela já existisse sem essas colunas)
@@ -730,7 +735,7 @@ def dev_panel():
         keys = ['dev_instagram_url', 'dev_name', 'show_dev_name', 'x_url', 'facebook_url', 'whatsapp_url', 'footer_rights']
         for k in keys:
             val = request.form.get(k, '')
-            conn.execute('INSERT INTO settings (key, value) VALUES (?, ?) ON CONFLICT(key) DO UPDATE SET value=?', (k, val, val))
+            conn.execute('INSERT INTO settings (key, value) VALUES (?, ?) ON CONFLICT(key) DO UPDATE SET value=EXCLUDED.value', (k, val))
         conn.commit()
         flash('DADOS DO DESENVOLVEDOR ATUALIZADOS!', 'success')
         return redirect(url_for('dev_panel'))
