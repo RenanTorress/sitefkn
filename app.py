@@ -600,7 +600,7 @@ with app.app_context():
         conn.execute('INSERT INTO users (email, password_hash, name, role) VALUES (?, ?, ?, ?)',
                      ('desenvolper@fkn.com', generate_password_hash('Praxair1'), 'Desenvolvedor Master', 'developer'))
     else:
-        conn.execute('UPDATE users SET password_hash = ?, role = "developer", name = "Desenvolvedor Master" WHERE email = ?',
+        conn.execute("UPDATE users SET password_hash = ?, role = 'developer', name = 'Desenvolvedor Master' WHERE email = ?",
                      (generate_password_hash('Praxair1'), 'desenvolper@fkn.com'))
         
     # Garantir MASTER (Agora chamado de Professor)
@@ -610,8 +610,8 @@ with app.app_context():
                      ('admin@admin.com', generate_password_hash('123456'), 'Professor', 'master'))
     else:
         # Garantir o papel de master e o nome Professor se não tiver mudado
-        conn.execute('UPDATE users SET role = "master", name = "Professor" WHERE email = ? AND name = "Fundador Oficial"', ('admin@admin.com',))
-        conn.execute('UPDATE users SET role = "master" WHERE email = ?', ('admin@admin.com',))
+        conn.execute("UPDATE users SET role = 'master', name = 'Professor' WHERE email = ? AND name = 'Fundador Oficial'", ('admin@admin.com',))
+        conn.execute("UPDATE users SET role = 'master' WHERE email = ?", ('admin@admin.com',))
         
     conn.commit()
     conn.close()
