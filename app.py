@@ -59,8 +59,12 @@ def load_settings():
     # Track Daily Access (Silent fail if table not ready)
     try:
         today = datetime.date.today().isoformat()
-        conn.execute('INSERT INTO daily_access (access_date, count) VALUES (?, 1) ON CONFLICT(access_date) DO UPDATE SET count = count + 1', (today,))
-        conn.commit()
+        try:
+            conn.execute('INSERT OR IGNORE INTO daily_access (access_date, count) VALUES (?, 0)', (today,))
+            conn.execute('UPDATE daily_access SET count = count + 1 WHERE access_date = ?', (today,))
+            conn.commit()
+        except:
+            pass
     except: pass
     
     conn.close()
@@ -158,21 +162,24 @@ def admin():
         # Stats for Admin
         try:
             today = datetime.date.today().isoformat()
-            daily_hits = conn.execute('SELECT count FROM daily_access WHERE access_date = ?', (today,)).fetchone()
-            g.daily_hits = daily_hits['count'] if daily_hits else 0
+            count_row = conn.execute('SELECT count FROM daily_access WHERE access_date = ?', (today,)).fetchone()
+            daily_hits = count_row['count'] if count_row else 0
             
-            total_downloads = conn.execute('SELECT SUM(download_count) as total FROM files').fetchone()
-            g.total_downloads = total_downloads['total'] if total_downloads['total'] else 0
+            downloads_row = conn.execute('SELECT SUM(download_count) as total FROM files').fetchone()
+            total_downloads = downloads_row['total'] if downloads_row and downloads_row['total'] else 0
         except:
-            g.daily_hits = 0
-            g.total_downloads = 0
+            daily_hits = 0
+            total_downloads = 0
         
     except sqlite3.OperationalError:
         topicos_pendentes = [] # Tratamento em caso do banco ainda não migrado
         topicos_respondidos = []
         
     conn.close()
-    return render_template('admin.html', users=users, all_folders=all_folders, forums=forums, files=files, topicos_pendentes=topicos_pendentes, topicos_respondidos=topicos_respondidos)
+    return render_template('admin.html', 
+                           users=users, all_folders=all_folders, forums=forums, files=files, 
+                           topicos_pendentes=topicos_pendentes, topicos_respondidos=topicos_respondidos,
+                           daily_hits=daily_hits, total_downloads=total_downloads)
 
 @app.route('/admin/profile', methods=['POST'])
 def edit_profile():
@@ -597,6 +604,11 @@ with app.app_context():
     except: pass
     try: conn.execute('ALTER TABLE exams ADD COLUMN is_visible BOOLEAN DEFAULT 0')
     except: pass
+    # Migrations para exam_submissions (caso a tabela já existisse sem essas colunas)
+    try: conn.execute('ALTER TABLE exam_submissions ADD COLUMN total_questions INTEGER DEFAULT 0')
+    except: pass
+    try: conn.execute('ALTER TABLE exam_submissions ADD COLUMN percentage REAL DEFAULT 0')
+    except: pass
     conn.commit()
     
     # Forçar dados do DESENVOLVEDOR...
@@ -866,7 +878,11 @@ def view_exam(exam_id):
     questions = conn.execute('SELECT * FROM exam_questions WHERE exam_id = ?', (exam_id,)).fetchall()
     
     if request.method == 'POST':
-        student_name = request.form.get('student_name', 'Estudante Anônimo')
+        student_name = request.form.get('student_name')
+        if not student_name:
+            flash('Por favor, informe seu nome completo.', 'error')
+            return redirect(url_for('view_exam', exam_id=exam_id))
+        student_name = student_name if student_name else 'Estudante Anônimo'
         answers = request.form.to_dict()
         results = []
         correct_count = 0
