@@ -1,0 +1,256 @@
+{% extends 'base.html' %}
+{% block content %}
+<div class="header-title" style="text-align: left; margin-bottom: 2rem;">
+    <h1>Painel de Controle</h1>
+    <p>O centro nervoso da sua plataforma de ensino à distância.</p>
+</div>
+
+<!-- 📭 CENTRAL DE NOTIFICAÇÕES (FASE 4) -->
+<div class="panel-grid" style="margin-bottom: 4rem;">
+    <div class="card" style="grid-column: span 2; border-color: #eab308; border-width: 2px; background: linear-gradient(135deg, rgba(234, 179, 8, 0.08), transparent);">
+        <h2 style="color: #eab308; margin-bottom: 2rem; display: flex; align-items: center; gap: 0.5rem;">📭 Inbox de Notificações - Helpdesk</h2>
+        
+        <div class="panel-grid" style="gap: 2rem;">
+            <!-- PENDENTES -->
+            <div>
+                <h3 style="color: white; margin-bottom: 1rem; font-size: 1.2rem; display:flex; justify-content: space-between;">
+                    Tarefas Pendentes
+                    <span class="badge" style="background: #eab308; color: black; border-radius: 50%;">{{ topicos_pendentes|length }}</span>
+                </h3>
+                
+                <div style="max-height: 400px; overflow-y: auto; padding-right: 0.5rem;">
+                    {% for t in topicos_pendentes %}
+                    <a href="{{ url_for('view_topic', topic_id=t.id) }}" style="text-decoration: none;">
+                        <div style="background: rgba(0,0,0,0.6); padding: 1.2rem; border-radius: 8px; border-left: 4px solid #eab308; margin-bottom: 0.8rem; transition: transform 0.2s; box-shadow: 0 4px 6px rgba(0,0,0,0.1);" onmouseover="this.style.transform='translateY(-3px)'" onmouseout="this.style.transform='translateY(0)'">
+                            <div style="font-weight: bold; color: white; margin-bottom: 0.4rem; font-size: 1.1rem;">{{ t.title }}</div>
+                            <div style="font-size: 0.85rem; color: #94a3b8;">Fórum: <strong style="color: var(--primary);">{{ t.forum_name }}</strong></div>
+                            <div style="font-size: 0.85rem; color: #94a3b8;">Aluno: <strong style="color: #eab308;">{{ t.author_name }}</strong></div>
+                            <div style="font-size: 0.75rem; color: #64748b; margin-top: 0.5rem;">Criado: {{ t.created_at }}</div>
+                        </div>
+                    </a>
+                    {% else %}
+                    <div style="color: #10b981; padding: 2rem; border: 1px dashed rgba(16, 185, 129, 0.5); border-radius: 8px; text-align: center; background: rgba(16, 185, 129, 0.05);">
+                        <div style="font-size: 2rem; margin-bottom: 0.5rem;">🎉</div>
+                        <strong>Livre de Dívidas!</strong><br>Você zerou as pendências de alunos.
+                    </div>
+                    {% endfor %}
+                </div>
+            </div>
+            
+            <!-- RESPONDIDOS -->
+            <div>
+                <h3 style="color: #10b981; margin-bottom: 1rem; font-size: 1.2rem;">✅ Atendidos (Histórico Recente)</h3>
+                
+                <div style="max-height: 400px; overflow-y: auto; padding-right: 0.5rem;">
+                    {% for t in topicos_respondidos[:8] %}
+                    <a href="{{ url_for('view_topic', topic_id=t.id) }}" style="text-decoration: none;">
+                        <div style="background: rgba(0,0,0,0.3); padding: 1rem; border-radius: 8px; border-left: 4px solid #10b981; margin-bottom: 0.8rem; opacity: 0.8; transition: opacity 0.2s;" onmouseover="this.style.opacity='1'" onmouseout="this.style.opacity='0.8'">
+                            <div style="font-weight: bold; color: #cbd5e1; margin-bottom: 0.2rem;">{{ t.title }}</div>
+                            <div style="font-size: 0.8rem; color: #64748b;">Fórum: {{ t.forum_name }}</div>
+                        </div>
+                    </a>
+                    {% else %}
+                    <div style="color: #64748b; padding: 1rem; text-align: center;">Vazio.</div>
+                    {% endfor %}
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- ABAS SUPERIORES DE CONFIGURAÇÃO DO PROFESSOR -->
+<div class="panel-grid" style="margin-bottom: 4rem;">
+    <!-- 🧑‍🏫 MEU PERFIL (FASE 5) -->
+    <div class="card" style="border-top: 4px solid var(--primary);">
+        <h2 style="border-bottom: 1px solid var(--border); padding-bottom: 0.5rem; margin-bottom: 1.5rem;">🧑‍🏫 Meu Perfil na Sala</h2>
+        
+        <div style="display: flex; gap: 1rem; align-items: center; margin-bottom: 1.5rem;">
+            <div style="width: 80px; height: 80px; border-radius: 50%; overflow: hidden; border: 2px solid var(--primary); background: rgba(0,0,0,0.2);">
+                {% if session.get('profile_pic') %}
+                <img src="{{ session.get('profile_pic') }}" alt="Avatar" style="width: 100%; height: 100%; object-fit: cover;">
+                {% else %}
+                <div style="width: 100%; height: 100%; display: flex; align-items: center; justify-content: center; font-size: 2rem;">👤</div>
+                {% endif %}
+            </div>
+            <div>
+                <strong style="font-size: 1.2rem; color: white;">{{ session.get('name', 'Professor Auxiliar') }}</strong>
+                <div style="font-size: 0.85rem; color: #94a3b8;">{{ session.get('email') }}</div>
+            </div>
+        </div>
+
+        <form method="POST" action="{{ url_for('edit_profile') }}" enctype="multipart/form-data">
+            <div class="form-group" style="padding: 1rem; background: rgba(0,0,0,0.2); border-radius: 8px;">
+                <label style="color: var(--primary);">📷 Alterar Foto de Rosto (Fórum)</label>
+                <input type="file" name="profile_pic" accept=".png,.jpg,.jpeg" class="form-control" style="font-size: 0.8rem;">
+            </div>
+            <div class="form-group">
+                <label>Como quer ser chamado pelos alunos?</label>
+                <input type="text" name="name" class="form-control" placeholder="Prof. Renan">
+            </div>
+            <div class="form-group">
+                <label>Nova Senha de Acesso (Deixe vazio caso não queira mudar)</label>
+                <input type="password" name="password" class="form-control" placeholder="*******">
+            </div>
+            <button type="submit" class="btn" style="width: 100%;">Salvar Meus Dados</button>
+        </form>
+    </div>
+
+    <!-- CONFIGURAÇÕES GERAIS DE SITE -->
+    <div class="card">
+        <h2 style="border-bottom: 1px solid var(--border); padding-bottom: 0.5rem; margin-bottom: 1.5rem;">🎨 Configurações de Aparência Global</h2>
+        <form method="POST" action="{{ url_for('save_settings') }}" enctype="multipart/form-data">
+            <div class="form-group">
+                <label>Nome do Site</label>
+                <input type="text" name="site_name" class="form-control" value="{{ g.settings.get('site_name', '') }}">
+            </div>
+            <div class="form-group">
+                <label>Cor Principal (Hexadecimal, ex: #3b82f6)</label>
+                <input type="text" name="primary_color" class="form-control" value="{{ g.settings.get('primary_color', '#3b82f6') }}">
+            </div>
+            <div class="form-group">
+                <label>Link do seu Instagram (Para o Rodapé)</label>
+                <input type="url" name="instagram_url" class="form-control" placeholder="https://instagram.com/renan" value="{{ g.settings.get('instagram_url', '') }}">
+            </div>
+            
+            <div class="form-group" style="padding: 1rem; background: rgba(0,0,0,0.2); border-radius: 8px; border: 1px solid var(--border);">
+                <label style="color: var(--primary); font-weight: bold; margin-bottom: 0.5rem;">📸 Alterar Banner da Página Inicial</label>
+                <p style="font-size: 0.8rem; color:#94a3b8; margin-bottom: 1rem;">Faça upload de uma resolução bonita horizontal (Capa).</p>
+                <input type="file" name="home_image" accept=".png,.jpg,.jpeg" class="form-control" style="color: white; font-size: 0.85rem;">
+            </div>
+            
+            <button type="submit" class="btn" style="width: 100%; margin-bottom: 1rem;">Aplicar Textos e Cores</button>
+        </form>
+
+        {% if g.settings.get('home_image_url') %}
+        <form method="POST" action="{{ url_for('remove_banner') }}" onsubmit="return confirm('Isso removerá a Capa da página inicial imediatamente. Deseja retornar ao fundo puro?');">
+            <button type="submit" class="btn btn-danger" style="width: 100%; border: 1px solid #ef4444; background: transparent; color: #ef4444;">🗑️ Remover Capa Atual Instalada</button>
+        </form>
+        {% endif %}
+    </div>
+</div>
+
+<div class="panel-grid">
+    <!-- MÓDULO GOOGLE DRIVE -->
+    <div class="card">
+        <h2 style="border-bottom: 1px solid var(--border); padding-bottom: 0.5rem; margin-bottom: 1.5rem;">📂 Gestão de Pastas e PDFs</h2>
+        
+        <div style="background: rgba(255,255,255,0.02); padding: 1.5rem; border-radius: 12px; margin-bottom: 2rem; border: 1px solid var(--border);">
+            <h4 style="margin-bottom: 1rem; color: var(--primary);">1. Criar Nova Pasta</h4>
+            <form method="POST" action="{{ url_for('create_folder') }}" style="display: flex; gap: 1rem; flex-wrap: wrap;">
+                <input type="text" name="name" class="form-control" placeholder="Exercícios Resolvidos" required style="flex: 1; min-width: 200px;">
+                <select name="parent_id" class="form-control" style="width: auto;">
+                    <option value="">(Raiz Central)</option>
+                    {% for fold in all_folders %}
+                    <option value="{{ fold.id }}">{{ fold.name }}</option>
+                    {% endfor %}
+                </select>
+                <button type="submit" class="btn">Criar</button>
+            </form>
+        </div>
+
+        <div style="background: rgba(255,255,255,0.02); padding: 1.5rem; border-radius: 12px; margin-bottom: 2rem; border: 1px solid var(--border);">
+            <h4 style="margin-bottom: 1rem; color: #ef4444;">Excluir Pasta e Todo o Conteúdo</h4>
+            <form method="POST" action="{{ url_for('delete_folder') }}" style="display: flex; gap: 1rem; flex-wrap: wrap;" onsubmit="return confirm('ATENÇÃO: Isso vai excluir a pasta definitivamente! Tem certeza?');">
+                <select name="folder_id" class="form-control" required style="flex: 1; min-width: 200px;">
+                    <option value="">Selecione a Pasta...</option>
+                    {% for fold in all_folders %}
+                    <option value="{{ fold.id }}">{{ fold.name }}</option>
+                    {% endfor %}
+                </select>
+                <button type="submit" class="btn btn-danger" style="background: #ef4444; color: white;">Deletar</button>
+            </form>
+        </div>
+
+        <div style="background: rgba(255,255,255,0.02); padding: 1.5rem; border-radius: 12px; border: 1px solid var(--border);">
+            <h4 style="margin-bottom: 1rem; color: #10b981;">2. Fazer Upload de Pdf/Imagem</h4>
+            <form method="POST" action="{{ url_for('admin_upload') }}" enctype="multipart/form-data">
+                <div style="margin-bottom: 1rem;">
+                    <label style="font-size: 0.85rem; color: #94a3b8; display:block; margin-bottom: 0.5rem;">Selecione a Pasta de Destino:</label>
+                    <select name="folder_id" class="form-control" style="margin-bottom: 1rem;">
+                        <option value="">(Nenhuma, soltar na Raiz)</option>
+                        {% for fold in all_folders %}
+                        <option value="{{ fold.id }}">{{ fold.name }}</option>
+                        {% endfor %}
+                    </select>
+                    
+                    <div class="upload-zone" style="padding: 1.5rem; border-color: rgba(255,255,255,0.2); background: rgba(0,0,0,0.3);">
+                        <input type="file" name="file" required accept=".pdf,.doc,.docx,.png,.jpg,.jpeg,.zip" style="width: 100%; color: #94a3b8; font-size: 0.9rem;">
+                    </div>
+                </div>
+                <button type="submit" class="btn" style="width: 100%;">Efetuar Envio Oficial</button>
+            </form>
+        </div>
+        
+        <div style="margin-top: 2rem;">
+            <h4 style="color: white; margin-bottom: 1rem;">Últimos Arquivos Entregues</h4>
+            <div style="max-height: 200px; overflow-y: auto;">
+                {% for file in files %}
+                <div style="display: flex; justify-content: space-between; padding: 0.8rem; border-bottom: 1px solid rgba(255,255,255,0.05); align-items: center;">
+                    <div style="font-size: 0.85rem; color: #cbd5e1; max-width: 60%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">{{ file.filename }}</div>
+                    <form method="POST" action="{{ url_for('delete_file', file_id=file.id) }}" onsubmit="return confirm('Sumir globalmente com esse PDF?');">
+                        <button type="submit" class="btn btn-danger" style="padding: 0.2rem 0.6rem; font-size: 0.7rem;">Excluir</button>
+                    </form>
+                </div>
+                {% else %}
+                <div style="text-align: center; color: #64748b;">Nenhum material no armazém.</div>
+                {% endfor %}
+            </div>
+        </div>
+    </div>
+
+    <div>
+        <div class="card" style="margin-bottom: 2rem;">
+            <h2>Módulos do Fórum (Salas)</h2>
+            <form method="POST" action="{{ url_for('create_forum') }}" style="margin-bottom: 1.5rem;">
+                <input type="text" name="title" class="form-control" placeholder="Ex: Bate-papo de Newton" required style="margin-bottom: 0.5rem;">
+                <input type="text" name="description" class="form-control" placeholder="Regras e Resumo..." style="margin-bottom: 0.5rem;">
+                <button type="submit" class="btn" style="width: 100%;">Abrir Nova Sala Pública</button>
+            </form>
+            
+            {% for forum in forums %}
+            <div style="padding: 1rem; background: rgba(0,0,0,0.2); border: 1px solid var(--border); border-radius: 8px; margin-bottom: 0.5rem; display: flex; justify-content: space-between; align-items: center;">
+                <div>
+                    <strong>{{ forum.title }}</strong>
+                </div>
+                <form method="POST" action="{{ url_for('delete_forum', forum_id=forum.id) }}" onsubmit="return confirm('Explodir essa sala vai apagar TODAS as mensagens e o histórico do Helpdesk.');">
+                    <button type="submit" class="btn btn-danger" style="padding: 0.2rem 0.6rem;">Apagar Sala</button>
+                </form>
+            </div>
+            {% endfor %}
+        </div>
+
+        <div class="card">
+            <h2>Corpo Docente (Admins)</h2>
+            <form method="POST" action="{{ url_for('add_user') }}" style="margin-bottom: 1.5rem; border-bottom: 1px solid var(--border); padding-bottom: 1.5rem;">
+                <input type="text" name="name" class="form-control" placeholder="Nome do Professor (Vai aparecer no chat)" required style="margin-bottom: 0.5rem;">
+                <input type="email" name="email" class="form-control" placeholder="E-mail Funcional" required style="margin-bottom: 0.5rem;">
+                <input type="password" name="password" class="form-control" placeholder="Senha Forte" required style="margin-bottom: 0.5rem;">
+                <button type="submit" class="btn" style="width: 100%;">Recrutar Novo Professor</button>
+            </form>
+            
+            <h4 style="margin-bottom: 1rem; color: #94a3b8;">Professores Registrados</h4>
+            {% for user in users %}
+            <div style="padding: 1rem; background: rgba(0,0,0,0.2); border: 1px solid var(--border); border-radius: 8px; margin-bottom: 0.5rem; display: flex; justify-content: space-between; align-items: center;">
+                <div style="display: flex; align-items: center; gap: 0.5rem;">
+                    {% if user.profile_pic %}
+                    <img src="{{ user.profile_pic }}" style="width: 30px; height: 30px; border-radius: 50%; object-fit: cover;">
+                    {% endif %}
+                    <div>
+                        <div style="font-weight: bold; font-size: 0.95rem;">{{ user.name or 'Anônimo' }}</div>
+                        <div style="font-size: 0.75rem; color: #94a3b8;">{{ user.email }}</div>
+                    </div>
+                </div>
+                {% if user.email != 'admin@admin.com' %}
+                <form method="POST" action="{{ url_for('delete_user', user_id=user.id) }}" onsubmit="return confirm('Extirpar Professor? (Irreversível)');">
+                    <button type="submit" class="btn btn-danger" style="padding: 0.2rem 0.6rem;">Banir</button>
+                </form>
+                {% else %}
+                <span class="badge" style="background: var(--primary); font-size: 0.7rem; padding: 4px 8px;">👑 MASTER</span>
+                {% endif %}
+            </div>
+            {% endfor %}
+            <p style="font-size: 0.8rem; color: #64748b; margin-top: 1rem; text-align: center;">Somente a conta Master possui poder de Banimento.</p>
+        </div>
+    </div>
+</div>
+{% endblock %}

@@ -1,0 +1,82 @@
+{% extends 'base.html' %}
+{% block content %}
+<div style="margin-bottom: 2rem;">
+    <a href="{{ url_for('forums') }}" style="color: var(--primary); text-decoration: none; font-weight: 600;">&larr; Voltar para Salas</a>
+</div>
+
+<div class="header-title" style="text-align: left; margin-bottom: 2rem;">
+    <h1>{{ forum.title }}</h1>
+    <p>{{ forum.description }}</p>
+</div>
+
+<div class="panel-grid">
+    <div>
+        <h3 style="margin-bottom: 1rem; color: #94a3b8;">Tópicos Ativos</h3>
+        {% for topic in topics %}
+        <div class="card" style="margin-bottom: 1rem; padding: 1.5rem; transition: transform 0.2s; position: relative;">
+            <a href="{{ url_for('view_topic', topic_id=topic.id) }}" style="text-decoration: none; color: white; display: block; margin-bottom: 0.5rem;">
+                
+                <!-- Status Badge Animado -->
+                {% if topic.status == 'respondido' %}
+                <span class="badge" style="background: rgba(16, 185, 129, 0.2); color: #10b981; border: 1px solid #10b981; display: inline-block; margin-bottom: 0.8rem; font-size: 0.8rem; padding: 4px 10px; border-radius: 12px; font-weight: 600;">✅ Respondido</span>
+                {% else %}
+                <span class="badge" style="background: rgba(234, 179, 8, 0.2); color: #eab308; border: 1px solid #eab308; display: inline-block; margin-bottom: 0.8rem; font-size: 0.8rem; padding: 4px 10px; border-radius: 12px; font-weight: 600;">⏳ Aguardando Resposta</span>
+                {% endif %}
+                
+                <h3 style="margin-bottom: 0.5rem; font-size: 1.25rem;">{% if session.get('user_id') %}{{ topic.title }}{% else %}{{ topic.title | censor }}{% endif %}</h3>
+                <div style="font-size: 0.85rem; color: #94a3b8;">Iniciado por: <span style="color: var(--primary); font-weight: bold;">{{ topic.author_name }}</span> em {{ topic.created_at.split()[0] }}</div>
+            </a>
+            
+            {% if session.get('user_id') %}
+            <!-- Botão de Apagar Tópico -->
+            <form method="POST" action="{{ url_for('delete_topic', topic_id=topic.id) }}" style="position: absolute; top: 1.5rem; right: 1.5rem;" onsubmit="return confirm('Você está prestes a aniquilar todo o conteúdo desse tópico e suas mensagens. Certeza?');">
+                <input type="hidden" name="forum_id" value="{{ forum.id }}">
+                <button type="submit" class="btn btn-danger" style="padding: 0.4rem 0.8rem; font-size: 0.8rem;">🗑️ Apagar Tópico</button>
+            </form>
+            {% endif %}
+        </div>
+        {% else %}
+        <p style="color: #64748b; padding: 2rem; border: 1px dashed var(--border); border-radius: 8px; text-align: center;">Nenhum debate foi aberto ainda.</p>
+        {% endfor %}
+    </div>
+
+    <div>
+        <div class="card" style="border-top: 4px solid var(--primary);">
+            <h3 style="color: var(--primary);">Abrir Nova Dúvida / Tópico</h3>
+            <p style="font-size: 0.85rem; color: #94a3b8; margin-bottom: 1.5rem;">Sua dúvida ficará pendente de resposta oficial.</p>
+            
+            <form method="POST" enctype="multipart/form-data">
+                <div class="form-group">
+                    <label>Título Curto / Assunto</label>
+                    <input type="text" name="title" class="form-control" required placeholder="Ex: Erro no Exercicio 4">
+                </div>
+                
+                {% if not session.get('user_id') %}
+                <div class="form-group">
+                    <label>Seu Nome Real (Estudante)</label>
+                    <input type="text" name="author_name" class="form-control" required placeholder="Ana Souza">
+                </div>
+                {% else %}
+                <div style="padding: 0.8rem; background: rgba(59, 130, 246, 0.1); border-radius: 4px; margin-bottom: 1rem;">
+                    <p style="font-size: 0.8rem; color: var(--primary); margin: 0;">Oficial Admin: {{ session.get('email') }}</p>
+                </div>
+                {% endif %}
+                
+                <div class="form-group">
+                    <label>Desenvolva sua Dúvida ou Conteúdo</label>
+                    <textarea name="content" class="form-control" rows="5" required placeholder="Explique qual o problema encontrou..."></textarea>
+                </div>
+                
+                <div class="form-group" style="padding: 1.2rem; background: rgba(0,0,0,0.3); border-radius: 8px; border: 1px dashed var(--border);">
+                    <label style="color: #cbd5e1; cursor: pointer; display: block;">
+                        <span style="font-weight: 600; font-size: 1rem; color: white;">📎 Print / Arquivo Auxiliar (Opcional)</span>
+                        <input type="file" name="file" accept=".pdf,.png,.jpg,.jpeg,.zip" style="width: 100%; color: #60a5fa; margin-top: 0.5rem; font-size: 0.85rem;">
+                    </label>
+                </div>
+
+                <button type="submit" class="btn" style="width: 100%; padding: 1rem; font-size: 1.1rem;">Enviar Ticket Novo</button>
+            </form>
+        </div>
+    </div>
+</div>
+{% endblock %}

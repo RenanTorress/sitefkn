@@ -1,0 +1,81 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{{ g.settings.get('site_name', 'Física com FKN') }}</title>
+    <link rel="icon" type="image/svg+xml" href="{{ url_for('static', filename='images/favicon.svg') }}">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=Outfit:wght@400;500;600;700;800&family=Space+Grotesk:wght@500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+    <style>
+        :root {
+            --primary: {{ g.settings.get('primary_color', '#00f2fe') }};
+            --primary-alt: #4facfe;
+        }
+        .brand-text {
+            background: linear-gradient(135deg, #fff 0%, var(--primary) 100%);
+            background-clip: text;
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+    </style>
+</head>
+<body style="display: flex; flex-direction: column; min-height: 100vh;">
+    <nav class="navbar">
+        <div class="nav-brand">
+            <a href="{{ url_for('index') }}" style="display: flex; align-items: center; gap: 0.75rem;">
+                <div class="nav-brand-logo">
+                    <!-- Atom SVG Logo -->
+                    <svg width="32" height="32" viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg">
+                        <circle cx="50" cy="50" r="10" fill="currentColor"/>
+                        <ellipse cx="50" cy="50" rx="40" ry="15" stroke="currentColor" stroke-width="4" transform="rotate(30 50 50)"/>
+                        <ellipse cx="50" cy="50" rx="40" ry="15" stroke="currentColor" stroke-width="4" transform="rotate(-30 50 50)"/>
+                        <ellipse cx="50" cy="50" rx="40" ry="15" stroke="currentColor" stroke-width="4" transform="rotate(90 50 50)"/>
+                    </svg>
+                </div>
+                <span class="brand-text">{{ g.settings.get('site_name', 'Física com FKN') }}</span>
+            </a>
+        </div>
+        <div class="nav-links">
+            <a href="{{ url_for('materiais') }}">Materiais</a>
+            <a href="{{ url_for('forums') }}">Fórum</a>
+            {% if session.get('user_id') %}
+                <span style="color:#f1f5f9; font-weight: bold; font-size: 0.95rem; margin-left: 1rem;">Olá, {{ session.get('name') or 'Mestre' }}</span>
+                <a href="{{ url_for('admin') }}">Dashboard Master</a>
+                <a href="{{ url_for('logout') }}" class="btn-logout">Sair</a>
+            {% else %}
+                <a href="{{ url_for('login') }}" style="margin-left: 1rem;">Área Restrita</a>
+            {% endif %}
+        </div>
+    </nav>
+    <div class="container" style="flex: 1;">
+        {% with messages = get_flashed_messages(with_categories=true) %}
+          {% if messages %}
+            <div class="flash-messages">
+                {% for category, message in messages %}
+                  <div class="flash {{ category }}">{{ message }}</div>
+                {% endfor %}
+            </div>
+          {% endif %}
+        {% endwith %}
+        {% block content %}{% endblock %}
+    </div>
+
+    <!-- RODAPÉ DA APLICAÇÃO -->
+    <footer style="margin-top: 5rem; padding: 2rem 5%; background: rgba(0,0,0,0.5); border-top: 1px solid var(--border); text-align: center;">
+        <div style="margin-bottom: 1rem;">
+            {% if g.settings.get('instagram_url') %}
+            <a href="{{ g.settings.get('instagram_url') }}" target="_blank" style="display: inline-block; padding: 0.5rem; transition: transform 0.2s;" onmouseover="this.style.transform='scale(1.1)'" onmouseout="this.style.transform='scale(1)'">
+                <!-- SVG Ícone nativo do Instagram -->
+                <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="color: var(--primary);">
+                    <rect x="2" y="2" width="20" height="20" rx="5" ry="5"></rect>
+                    <path d="M16 11.37A4 4 0 1 1 12.63 8 4 4 0 0 1 16 11.37z"></path>
+                    <line x1="17.5" y1="6.5" x2="17.51" y2="6.5"></line>
+                </svg>
+            </a>
+            {% endif %}
+        </div>
+        <p style="color: #64748b; font-size: 0.9rem; font-weight: 500;">&copy; Direitos reservados para Renan Torres, 2026</p>
+    </footer>
+</body>
+</html>

@@ -1,0 +1,154 @@
+{% extends 'base.html' %}
+{% block content %}
+<div style="margin-bottom: 2rem;">
+    <a href="{{ url_for('view_forum', forum_id=topic.forum_id) }}" style="color: var(--primary); text-decoration: none; font-weight: 600;">&larr; Voltar aos Tópicos</a>
+</div>
+
+<div class="card" style="margin-bottom: 2rem; background: rgba(0,0,0,0.3); border-color: var(--primary);">
+    <h2 style="color: white; margin-bottom: 0.5rem;">{{ topic.title }}</h2>
+    <div style="font-size: 0.85rem; color: #94a3b8;">Iniciado por: <strong>{{ topic.author_name }}</strong> | {{ topic.created_at.split()[0] }}</div>
+</div>
+
+<div class="panel-grid">
+    <div style="grid-column: span 2;">
+        {% for msg in messages %}
+        <div id="msg-{{ msg.id }}" style="padding: 1.5rem; border-radius: 12px; margin-bottom: 1.5rem; border: 1px solid var(--border); background: {% if msg.is_admin %}rgba(59, 130, 246, 0.08){% else %}rgba(255,255,255,0.02){% endif %}; position: relative; box-shadow: 0 4px 15px rgba(0,0,0,0.1);">
+            
+            {% if msg.is_admin %}
+            <span class="badge" style="background: var(--primary); margin-bottom: 1rem; display: inline-block; box-shadow: 0 0 10px rgba(59, 130, 246, 0.5);">🎓 RESPOSTA OFICIAL DA ADMINISTRAÇÃO</span>
+            {% endif %}
+            
+            <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 1rem;">
+                
+                <!-- AVATAR E NOME (FASE 5) -->
+                <div style="display: flex; align-items: center; gap: 0.8rem;">
+                    {% if msg.is_admin %}
+                        <div style="width: 45px; height: 45px; border-radius: 50%; overflow: hidden; border: 2px solid var(--primary); background: rgba(59, 130, 246, 0.2); display: flex; align-items: center; justify-content: center; box-shadow: 0 0 8px rgba(59,130,246,0.3);">
+                            {% if msg.admin_pic %}
+                                <img src="{{ msg.admin_pic }}" style="width: 100%; height: 100%; object-fit: cover;">
+                            {% else %}
+                                <span style="font-size: 1.5rem;">👤</span>
+                            {% endif %}
+                        </div>
+                        <div style="font-weight: bold; font-size: 1.15rem; color: var(--primary);">{{ msg.admin_name or 'Professor(a)' }}</div>
+                    {% else %}
+                        <div style="width: 45px; height: 45px; border-radius: 50%; overflow: hidden; background: rgba(255,255,255,0.1); border: 2px solid rgba(255,255,255,0.2); display: flex; align-items: center; justify-content: center; color: white; font-weight: bold; font-size: 1.2rem;">
+                            {{ msg.author_name[0]|upper }}
+                        </div>
+                        <div style="font-weight: bold; font-size: 1.15rem; color: white;">{{ msg.author_name }}</div>
+                    {% endif %}
+                </div>
+                
+                <div style="display: flex; gap: 0.5rem; align-items: center;">
+                    <button type="button" class="btn" style="padding: 0.3rem 0.8rem; font-size: 0.8rem; background: rgba(255,255,255,0.1); border: 1px solid var(--border);" 
+                            data-msg-id="{{ msg.id }}" 
+                            data-author="{% if msg.is_admin %}{{ msg.admin_name or 'Professor(a)' }}{% else %}{{ msg.author_name }}{% endif %}" 
+                            data-excerpt="{% if session.get('user_id') %}{{ msg.content[:70] }}{% else %}{{ msg.content[:70] | censor }}{% endif %}..." 
+                            onclick="prepararResposta(this)">
+                        ↩️ Responder
+                    </button>
+                    
+                    {% if session.get('user_id') %}
+                    <form method="POST" action="{{ url_for('delete_message', msg_id=msg.id) }}" style="display:inline;" onsubmit="return confirm('Expurgar essa mensagem imprópria da existência cósmica?');">
+                        <input type="hidden" name="topic_id" value="{{ topic.id }}">
+                        <button type="submit" class="btn btn-danger" style="padding: 0.3rem 0.8rem; font-size: 0.8rem;">❌ Deletar</button>
+                    </form>
+                    {% endif %}
+                </div>
+            </div>
+
+            {% if msg.reply_to_id %}
+            <div style="background: rgba(0,0,0,0.5); border-left: 5px solid {% if msg.is_admin %}var(--primary){% else %}#10b981{% endif %}; padding: 1rem; border-radius: 6px; margin-bottom: 1rem; border-top-right-radius: 12px; border-bottom-right-radius: 12px;">
+                <div style="font-size: 0.85rem; color: var(--primary); font-weight: bold; margin-bottom: 0.3rem;">Respondendo à citação de: {{ msg.reply_to_author }}</div>
+                <div style="font-size: 0.9rem; color: #cbd5e1; font-style: italic;">"{% if session.get('user_id') %}{{ msg.reply_to_content }}{% else %}{{ msg.reply_to_content | censor }}{% endif %}"</div>
+            </div>
+            {% endif %}
+
+            <div style="white-space: pre-wrap; line-height: 1.7; color: #f1f5f9; font-size: 1rem; margin-bottom: 1rem; padding-left: 3.5rem;">{% if session.get('user_id') %}{{ msg.content }}{% else %}{{ msg.content | censor }}{% endif %}</div>
+            
+            {% if msg.file_path %}
+            <div style="margin-top: 1.5rem; margin-left: 3.5rem; display: inline-block; padding: 1rem; background: rgba(0,0,0,0.4); border-radius: 8px; border: 1px solid var(--border); box-shadow: inset 0 2px 5px rgba(0,0,0,0.5);">
+                <div style="font-size: 0.85rem; color: #94a3b8; margin-bottom: 0.8rem; display:flex; align-items:center; gap: 0.5rem;">
+                    <span style="font-size: 1.2rem;">📎</span> Arquivo Localizado:
+                </div>
+                <a href="{{ url_for('download_forum', filename=msg.file_path) }}" class="btn" style="background: rgba(255,255,255,0.05); border: 1px solid var(--primary); color: var(--text-color); padding: 0.6rem 1.5rem;">⏬ Baixar Anexo Seguro</a>
+            </div>
+            {% endif %}
+            
+            <div style="font-size: 0.75rem; color: #64748b; margin-top: 1rem; border-top: 1px dashed rgba(255,255,255,0.1); padding-top: 0.5rem; text-align: right;">Transmitido às {{ msg.created_at }}</div>
+        </div>
+        {% else %}
+        <div style="color: #64748b; padding: 4rem; border: 2px dashed var(--border); border-radius: 12px; text-align: center; margin-bottom: 2rem; background: rgba(0,0,0,0.2);">
+            <div style="font-size: 3rem; margin-bottom: 1rem;">💬</div>
+            Nenhum vestígio orgânico aqui... Inicie o debate com uma Dúvida brilhante!
+        </div>
+        {% endfor %}
+    </div>
+
+    <div style="grid-column: span 2;">
+        <div class="card" id="formCaixaEnviadora" style="border: 1px solid var(--primary); box-shadow: 0 0 20px rgba(59, 130, 246, 0.1);">
+            <h3 style="margin-bottom: 1.5rem; color: var(--primary);">Engajar no Debate</h3>
+            
+            <div id="replyBoxAnimado" style="display: none; background: rgba(0,0,0,0.6); border-left: 5px solid #10b981; padding: 1rem; border-radius: 6px; margin-bottom: 1.5rem; position: relative;">
+                <button type="button" onclick="cancelarResposta()" style="position: absolute; right: 0.8rem; top: 0.8rem; background: rgba(239, 68, 68, 0.3); border: 1px solid #ef4444; border-radius: 50%; width: 25px; height: 25px; color: white; cursor: pointer; display: flex; justify-content: center; align-items: center;">X</button>
+                <div style="font-size: 0.85rem; color: #10b981; font-weight: bold; letter-spacing: 0.5px;">Respondendo à citação de: <span id="replyAuthorTarget" style="color: white; font-weight: normal;"></span></div>
+                <div id="replyContentTarget" style="font-size: 0.9rem; color: #cbd5e1; margin-top: 0.5rem; padding-right: 2rem;"></div>
+            </div>
+
+            <form method="POST" enctype="multipart/form-data">
+                <input type="hidden" name="reply_to_id" id="replyToIdInput" value="">
+                
+                {% if not session.get('user_id') %}
+                <div class="form-group">
+                    <label>Assine com seu Nome (Estudante)</label>
+                    <input type="text" name="author_name" class="form-control" placeholder="Arthur" required style="font-size: 1.1rem;">
+                </div>
+                {% else %}
+                <div style="display: flex; align-items: center; gap: 1rem; padding: 1rem; background: rgba(59, 130, 246, 0.1); border-radius: 8px; margin-bottom: 1.5rem; border: 1px inset var(--primary);">
+                    {% if session.get('profile_pic') %}
+                    <img src="{{ session.get('profile_pic') }}" style="width: 40px; height: 40px; border-radius: 50%; object-fit: cover; border: 2px solid var(--primary);">
+                    {% else %}
+                    <div style="width: 40px; height: 40px; border-radius: 50%; background: var(--primary); display: flex; align-items: center; justify-content: center;">👤</div>
+                    {% endif %}
+                    <p style="font-size: 0.9rem; color: #f1f5f9; margin: 0;">Resolução Oficial por: <strong style="color: var(--primary);">{{ session.get('name', 'Professor Admin') }}</strong></p>
+                </div>
+                {% endif %}
+                
+                <div class="form-group">
+                    <label>A sua contribuição para a História</label>
+                    <textarea name="content" class="form-control" rows="4" required placeholder="Digite sua resposta engenhosa com clareza..." style="font-size: 1.05rem; line-height: 1.5;"></textarea>
+                </div>
+                
+                <div class="form-group" style="padding: 1.5rem; background: rgba(0,0,0,0.2); border-radius: 8px; border: 1px dashed var(--border);">
+                    <label style="color: #cbd5e1; cursor: pointer; display: flex; flex-direction: column; gap: 0.5rem;">
+                        <div style="font-weight: 600; font-size: 1.1rem; color: white;">📎 Possui uma Imagem Técnica ou Arquivo Complementar?</div>
+                        <div style="font-size: 0.85rem; color: #94a3b8; font-weight: normal;">Deixe os alunos verem a resolução anexando a foto (Opcional).</div>
+                        <input type="file" name="file" accept=".pdf,.png,.jpg,.jpeg,.zip" style="color: #60a5fa; margin-top: 0.5rem;">
+                    </label>
+                </div>
+
+                <button type="submit" class="btn" style="width: 100%; font-size: 1.2rem; padding: 1rem; font-weight: bold; margin-top: 1rem;">Transmitir ao Grupo 🚀</button>
+            </form>
+        </div>
+    </div>
+</div>
+
+<script>
+    function prepararResposta(btn) {
+        document.getElementById('replyToIdInput').value = btn.getAttribute('data-msg-id');
+        document.getElementById('replyAuthorTarget').innerText = btn.getAttribute('data-author');
+        document.getElementById('replyContentTarget').innerText = btn.getAttribute('data-excerpt');
+        
+        const box = document.getElementById('replyBoxAnimado');
+        box.style.display = 'block';
+        box.style.animation = 'fadeIn 0.3s ease';
+        
+        window.scrollTo({ top: document.getElementById('formCaixaEnviadora').offsetTop - 50, behavior: 'smooth' });
+    }
+    
+    function cancelarResposta() {
+        document.getElementById('replyToIdInput').value = '';
+        document.getElementById('replyBoxAnimado').style.display = 'none';
+    }
+</script>
+{% endblock %}

@@ -1,0 +1,28 @@
+{% extends 'base.html' %}
+{% block content %}
+
+{% if g.settings.get('home_image_url') %}
+<div style="width: 100%; height: 350px; border-radius: 16px; margin-top: 1rem; margin-bottom: 3rem; background-image: url('{{ g.settings.get("home_image_url") }}'); background-size: cover; background-position: center; border: 1px solid var(--border); box-shadow: var(--glass-shadow); position: relative; overflow: hidden;">
+    <div style="position: absolute; bottom: 0; width: 100%; height: 50%; background: linear-gradient(to top, var(--bg-color), transparent);"></div>
+</div>
+{% endif %}
+
+<div class="header-title" style="margin-top: {% if g.settings.get('home_image_url') %}1rem{% else %}4rem{% endif %};">
+    <h1 style="font-size: 3.5rem;">{{ g.settings.get('site_name', 'Física Dinâmica') }}</h1>
+    <p style="max-width: 700px; margin: 0 auto; line-height: 1.8; font-size: 1.15rem; color: #cbd5e1;">
+        {{ g.settings.get('home_about', 'Nenhuma descrição fornecida pelo administrador do curso.') }}
+    </p>
+    
+    <div style="margin-top: 3.5rem;">
+        <a href="{{ url_for('materiais') }}" class="btn" style="font-size: 1.25rem; padding: 1.2rem 3.5rem; border-radius: 50px; font-weight: 700; box-shadow: 0 10px 25px rgba(59, 130, 246, 0.4);">
+            Acessar Área de Materiais
+        </a>
+    </div>
+</div>
+
+<div class="card" style="margin-top: 6rem; text-align: center; border-color: var(--primary); background: rgba(59, 130, 246, 0.05); padding: 3rem;">
+    <div style="font-size: 3rem; margin-bottom: 1rem;">📢</div>
+    <h3 style="color: var(--primary); margin-bottom: 1rem; font-size: 1.8rem;">Mural de Avisos da Direção</h3>
+    <p style="font-size: 1.15rem; line-height: 1.7; white-space: pre-wrap; color: #f1f5f9;">{{ g.settings.get('home_announcement', 'Nenhum recado na data de hoje.') }}</p>
+</div>
+{% endblock %}

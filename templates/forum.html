@@ -1,0 +1,20 @@
+{% extends 'base.html' %}
+{% block content %}
+<div class="header-title" style="text-align: left; margin-bottom: 2rem;">
+    <h1>Fórum de Estudos</h1>
+    <p>Escolha uma sala para acessar as discussões.</p>
+</div>
+
+<div class="files-grid" style="margin-top: 0;">
+    {% for forum in forums %}
+    <a href="{{ url_for('view_forum', forum_id=forum.id) }}" style="text-decoration: none;">
+        <div class="card" style="transition: transform 0.2s;">
+            <h3 style="color: var(--primary); margin-bottom: 0.5rem;">{{ forum.title }}</h3>
+            <p style="color: #94a3b8; font-size: 0.9rem;">{{ forum.description or 'Sem descrição' }}</p>
+        </div>
+    </a>
+    {% else %}
+    <p style="color: #64748b;">Nenhuma sala disponível. Aguarde os professores criarem o primeiro fórum.</p>
+    {% endfor %}
+</div>
+{% endblock %}

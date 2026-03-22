@@ -1,0 +1,55 @@
+{% extends 'base.html' %}
+{% block content %}
+<div class="header-title" style="text-align: left; margin-bottom: 2rem;">
+    <h1>Explorador de Materiais</h1>
+    <p>Navegue pelas pastas para encontrar o conteúdo da disciplina.</p>
+</div>
+
+<!-- Migalha de pão / Rastro -->
+<div style="background: rgba(0,0,0,0.2); padding: 1rem; border-radius: 8px; margin-bottom: 2rem; border: 1px solid var(--border);">
+    <a href="{{ url_for('materiais') }}" style="color: var(--primary); text-decoration: none; font-weight: 600;">Diretório Raiz</a>
+    {% for crumb in breadcrumbs %}
+        <span style="color: #64748b; margin: 0 0.5rem;">/</span>
+        <a href="{{ url_for('materiais', folder_id=crumb.id) }}" style="color: var(--primary); text-decoration: none; font-weight: 600;">{{ crumb.name }}</a>
+    {% endfor %}
+</div>
+
+<!-- Pastas -->
+{% if subfolders %}
+<h3 style="margin-bottom: 1rem; color: #94a3b8;">Pastas</h3>
+<div style="display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 1rem; margin-bottom: 3rem;">
+    {% for f in subfolders %}
+    <a href="{{ url_for('materiais', folder_id=f.id) }}" style="text-decoration: none;">
+        <div class="file-card" style="padding: 1.5rem; display: flex; flex-direction: row; align-items: center; gap: 1rem; cursor: pointer;">
+            <div style="font-size: 2rem;">📁</div>
+            <div style="font-weight: 600; color: white;">{{ f.name }}</div>
+        </div>
+    </a>
+    {% endfor %}
+</div>
+{% endif %}
+
+<!-- Arquivos -->
+<h3 style="margin-bottom: 1rem; color: #94a3b8;">Arquivos e PDFs</h3>
+{% if files %}
+<div class="files-grid" style="margin-top: 0;">
+    {% for file in files %}
+    <div class="file-card">
+        <div>
+            <div class="file-icon" style="font-size: 2.5rem; color: #ef4444;">📄</div>
+            <h4 class="file-title" style="font-size: 1.1rem;">{{ file.filename }}</h4>
+            <div class="file-meta">
+                <span>{{ file.size | format_size }}</span>
+                <span>{{ file.uploaded_at.split()[0] }}</span>
+            </div>
+        </div>
+        <a href="{{ url_for('download', file_id=file.id) }}" class="btn" style="padding: 0.6rem 1rem;">Baixar Arquivo</a>
+    </div>
+    {% endfor %}
+</div>
+{% else %}
+<div style="padding: 3rem; text-align: center; color: #64748b; border: 1px dashed var(--border); border-radius: 8px;">
+    <i>Nenhum arquivo encontrado nesta pasta.</i>
+</div>
+{% endif %}
+{% endblock %}
