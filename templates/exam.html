@@ -77,31 +77,9 @@
 </style>
 
 <script>
-    {% if exam.end_at %}
-    const endTime = new Date("{{ exam.end_at }}").getTime();
-    const timer = setInterval(() => {
-        const now = new Date().getTime();
-        const distance = endTime - now;
-        
-        if (distance < 0) {
-            clearInterval(timer);
-            document.getElementById("countdown").innerHTML = "TEMPO EXAURIDO";
-            document.getElementById("examForm").submit(); // Auto submit on timeout
-            return;
-        }
-        
-        const hours = Math.floor((distance % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
-        const minutes = Math.floor((distance % (1000 * 60 * 60)) / (1000 * 60));
-        const seconds = Math.floor((distance % (1000 * 60)) / 1000);
-        
-        document.getElementById("countdown").innerHTML = hours.toString().padStart(2, '0') + ":" + minutes.toString().padStart(2, '0') + ":" + seconds.toString().padStart(2, '0');
-    }, 1000);
-    {% else %}
-    document.getElementById("countdown").innerHTML = "PROVA ABERTA";
+    document.getElementById("countdown").innerHTML = "SIMULADO EM ANDAMENTO";
     document.getElementById("countdown").style.color = "#10b981";
     document.getElementById("countdown").style.borderColor = "#10b981";
-    {% endif %}
-    {% endif %}
 
     document.getElementById("examForm").addEventListener("submit", function(e) {
         const studentName = document.getElementById("student_name").value;

@@ -858,7 +858,8 @@ def view_exam(exam_id):
         return "Simulado não encontrado", 404
         
     # Admin can always view
-    if not exam['is_visible'] and session.get('role') != 'developer':
+    is_visible = dict(exam).get('is_visible', 0)
+    if not is_visible and session.get('role') != 'developer':
         conn.close()
         return render_template('error.html', message="Este simulado está desativado temporariamente pelo professor.")
 
