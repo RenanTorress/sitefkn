@@ -23,7 +23,7 @@ def get_db():
             port=url.port or 5432,
             database=url.path[1:] if url.path else 'postgres'
         )
-        
+
         # Patch connection to behave like SQLite's connection and return dict-like rows
         def execute_wrapper(query, params=None):
             query = query.replace('?', '%s')
@@ -31,33 +31,23 @@ def get_db():
                 query = query.upper().replace('INSERT OR IGNORE', 'INSERT')
                 if 'ON CONFLICT' not in query:
                     query += ' ON CONFLICT DO NOTHING'
-            
+
             cur = conn.cursor()
             try:
                 cur.execute(query, params or ())
-                # Adicionar suporte a acesso por nome de coluna (dict-like)
+                # Suporte a acesso por nome de coluna (dict-like)
                 if cur.description:
                     columns = [col[0] for col in cur.description]
-                    # Criar um método fetchall customizado
                     original_fetchall = cur.fetchall
                     cur.fetchall = lambda: [dict(zip(columns, row)) for row in original_fetchall()]
-                    # Criar um método fetchone customizado
                     original_fetchone = cur.fetchone
                     cur.fetchone = lambda: dict(zip(columns, row)) if (row := original_fetchone()) else None
                 return cur
             except Exception as e:
                 conn.rollback()
                 raise e
-        
+
         conn.execute = execute_wrapper
-        # Define timeout razoável para todas as queries desta conexão
-        try:
-            cur = conn.cursor()
-            cur.execute("SET statement_timeout = '30s'")
-            conn.commit()
-            cur.close()
-        except Exception:
-            pass
         return conn
     else:
         # SQLite (Local)
@@ -70,22 +60,14 @@ def init_db():
     with open('schema.sql', 'r', encoding='utf-8') as f:
         sql = f.read()
         if DATABASE_URL:
-            cur = conn.cursor()
-            try:
-                # Define timeout maior para as operações de inicialização
-                cur.execute("SET statement_timeout = '60s'")
-                conn.commit()
-                # Executa statement por statement para não estourar timeout
-                statements = [s.strip() for s in sql.split(';') if s.strip()]
-                for stmt in statements:
-                    try:
-                        cur.execute(stmt)
-                        conn.commit()
-                    except Exception as e:
-                        conn.rollback()
-                        print(f"[init_db] Aviso ao executar statement: {e}")
-            finally:
-                cur.close()
+            # PostgreSQL: executa cada statement individualmente para evitar timeout
+            statements = [s.strip() for s in sql.split(';') if s.strip()]
+            for stmt in statements:
+                try:
+                    conn.execute(stmt)
+                    conn.commit()
+                except Exception as e:
+                    print(f"[init_db] Aviso: {e}")
         else:
             conn.executescript(sql)
             conn.commit()

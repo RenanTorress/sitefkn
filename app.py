@@ -666,29 +666,22 @@ with app.app_context():
 
     try:
         conn = get_db()
-        # Forçar dados do DESENVOLVEDOR...
-        dev_exists = conn.execute('SELECT * FROM users WHERE email = ?', ('desenvolper@fkn.com',)).fetchone()
+        # Só cria os usuários padrão se ainda não existirem — sem UPDATE no startup
+        dev_exists = conn.execute('SELECT id FROM users WHERE email = ?', ('desenvolper@fkn.com',)).fetchone()
         if not dev_exists:
             conn.execute('INSERT INTO users (email, password_hash, name, role) VALUES (?, ?, ?, ?)',
                          ('desenvolper@fkn.com', generate_password_hash('Praxair1'), 'Desenvolvedor Master', 'developer'))
-        else:
-            # Só atualiza role e nome — NÃO regenera password_hash (lento, causa timeout no Supabase)
-            conn.execute("UPDATE users SET role = 'developer', name = 'Desenvolvedor Master' WHERE email = ?",
-                         ('desenvolper@fkn.com',))
-            
-        # Garantir MASTER (Agora chamado de Professor)
-        master_exists = conn.execute('SELECT * FROM users WHERE email = ?', ('admin@admin.com',)).fetchone()
+            conn.commit()
+
+        master_exists = conn.execute('SELECT id FROM users WHERE email = ?', ('admin@admin.com',)).fetchone()
         if not master_exists:
             conn.execute('INSERT INTO users (email, password_hash, name, role) VALUES (?, ?, ?, ?)',
                          ('admin@admin.com', generate_password_hash('123456'), 'Professor', 'master'))
-        else:
-            # Garantir o papel de master — NÃO regenera password_hash
-            conn.execute("UPDATE users SET role = 'master' WHERE email = ?", ('admin@admin.com',))
-            
-        conn.commit()
+            conn.commit()
+
         conn.close()
     except Exception as e:
-        print(f"[startup] Aviso ao inicializar usuários padrão: {e}")
+        print(f"[startup] Aviso: {e}")
         try: conn.rollback()
         except: pass
         try: conn.close()
