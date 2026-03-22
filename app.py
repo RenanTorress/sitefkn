@@ -3,7 +3,7 @@ from werkzeug.security import generate_password_hash, check_password_hash
 from werkzeug.utils import secure_filename
 import os
 import sqlite3
-from database import get_db
+from database import get_db, init_db
 
 app = Flask(__name__)
 app.secret_key = 'super_secret_key_change_in_production'
@@ -476,6 +476,7 @@ def download(file_id):
 def download_forum(filename): return send_from_directory(os.path.join(app.config['UPLOAD_FOLDER'], 'forum'), secure_filename(filename), as_attachment=True)
 
 with app.app_context():
+    init_db()  # Ensure schema exists
     conn = get_db()
     if not conn.execute('SELECT id FROM users').fetchone():
         conn.execute('INSERT INTO users (email, password_hash, name) VALUES (?, ?, ?)',
