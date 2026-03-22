@@ -56,10 +56,13 @@ def load_settings():
     settings_rows = conn.execute('SELECT key, value FROM settings').fetchall()
     g.settings = {row['key']: row['value'] for row in settings_rows}
     
-    # Track Daily Access
-    today = datetime.date.today().isoformat()
-    conn.execute('INSERT INTO daily_access (access_date, count) VALUES (?, 1) ON CONFLICT(access_date) DO UPDATE SET count = count + 1', (today,))
-    conn.commit()
+    # Track Daily Access (Silent fail if table not ready)
+    try:
+        today = datetime.date.today().isoformat()
+        conn.execute('INSERT INTO daily_access (access_date, count) VALUES (?, 1) ON CONFLICT(access_date) DO UPDATE SET count = count + 1', (today,))
+        conn.commit()
+    except: pass
+    
     conn.close()
 
 @app.route('/')
@@ -154,12 +157,16 @@ def admin():
         ''').fetchall()
         
         # Stats for Admin
-        today = datetime.date.today().isoformat()
-        daily_hits = conn.execute('SELECT count FROM daily_access WHERE access_date = ?', (today,)).fetchone()
-        g.daily_hits = daily_hits['count'] if daily_hits else 0
-        
-        total_downloads = conn.execute('SELECT SUM(download_count) as total FROM files').fetchone()
-        g.total_downloads = total_downloads['total'] if total_downloads['total'] else 0
+        try:
+            today = datetime.date.today().isoformat()
+            daily_hits = conn.execute('SELECT count FROM daily_access WHERE access_date = ?', (today,)).fetchone()
+            g.daily_hits = daily_hits['count'] if daily_hits else 0
+            
+            total_downloads = conn.execute('SELECT SUM(download_count) as total FROM files').fetchone()
+            g.total_downloads = total_downloads['total'] if total_downloads['total'] else 0
+        except:
+            g.daily_hits = 0
+            g.total_downloads = 0
         
     except sqlite3.OperationalError:
         topicos_pendentes = [] # Tratamento em caso do banco ainda não migrado
@@ -585,6 +592,10 @@ with app.app_context():
         user_choice TEXT,
         FOREIGN KEY(submission_id) REFERENCES exam_submissions(id) ON DELETE CASCADE
     )''')
+    try: conn.execute('CREATE TABLE IF NOT EXISTS daily_access (access_date DATE PRIMARY KEY, count INTEGER DEFAULT 0)')
+    except: pass
+    try: conn.execute('ALTER TABLE files ADD COLUMN download_count INTEGER DEFAULT 0')
+    except: pass
     conn.commit()
     
     # Forçar dados do DESENVOLVEDOR...
@@ -702,6 +713,44 @@ def admin_faqs():
     conn.close()
     return render_template('admin_faqs.html', faqs=faqs)
 
+@app.route('/admin/exams/<int:exam_id>/manage', methods=['GET', 'POST'])
+def manage_exam(exam_id):
+    if 'user_id' not in session: return redirect(url_for('login'))
+    conn = get_db()
+    exam = conn.execute('SELECT * FROM exams WHERE id = ?', (exam_id,)).fetchone()
+    
+    if request.method == 'POST':
+        action = request.form.get('action')
+        if action == 'update_details':
+            title = request.form.get('title')
+            folder_id = request.form.get('folder_id')
+            start_date = request.form.get('start_date')
+            start_time = request.form.get('start_time')
+            end_date = request.form.get('end_date')
+            end_time = request.form.get('end_time')
+            
+            start_at = f"{start_date}T{start_time}" if start_date and start_time else None
+            end_at = f"{end_date}T{end_time}" if end_date and end_time else None
+            if not folder_id: folder_id = None
+            
+            conn.execute('UPDATE exams SET title = ?, folder_id = ?, start_at = ?, end_at = ? WHERE id = ?', 
+                         (title, folder_id, start_at, end_at, exam_id))
+            conn.commit()
+            flash('Simulado atualizado!', 'success')
+            
+        elif action == 'delete_exam':
+            conn.execute('DELETE FROM exams WHERE id = ?', (exam_id,))
+            conn.commit()
+            conn.close()
+            flash('Simulado removido permanentemente!', 'success')
+            return redirect(url_for('admin_exams'))
+            
+    # Get questions for this exam
+    questions = conn.execute('SELECT * FROM exam_questions WHERE exam_id = ?', (exam_id,)).fetchall()
+    folders = conn.execute('SELECT * FROM folders').fetchall()
+    conn.close()
+    return render_template('admin_manage_exam.html', exam=exam, questions=questions, folders=folders)
+
 @app.route('/admin/exams', methods=['GET', 'POST'])
 def admin_exams():
     if 'user_id' not in session: return redirect(url_for('login'))
@@ -739,6 +788,17 @@ def admin_exams():
     folders = conn.execute('SELECT * FROM folders').fetchall()
     conn.close()
     return render_template('admin_exams.html', exams=exams, folders=folders)
+
+@app.route('/admin/exams/<int:exam_id>/update_question/<int:question_id>', methods=['POST'])
+def update_question(exam_id, question_id):
+    if 'user_id' not in session: return redirect(url_for('login'))
+    new_option = request.form.get('correct_option')
+    conn = get_db()
+    conn.execute('UPDATE exam_questions SET correct_option = ? WHERE id = ?', (new_option, question_id))
+    conn.commit()
+    conn.close()
+    flash('Gabarito da questão atualizado!', 'success')
+    return redirect(url_for('manage_exam', exam_id=exam_id))
 
 @app.route('/admin/exams/<int:exam_id>/delete_question/<int:question_id>', methods=['POST'])
 def delete_question(exam_id, question_id):
@@ -783,7 +843,7 @@ def add_question(exam_id):
     conn.commit()
     conn.close()
     flash('Questão Adicionada!', 'success')
-    return redirect(url_for('admin_exams'))
+    return redirect(url_for('manage_exam', exam_id=exam_id))
 
 @app.route('/admin/exams/<int:exam_id>/add_multiple', methods=['POST'])
 def add_multiple_questions(exam_id):
@@ -798,7 +858,7 @@ def add_multiple_questions(exam_id):
     conn.commit()
     conn.close()
     flash(f'{len(options)} questões adicionadas ao gabarito rápido!', 'success')
-    return redirect(url_for('admin_exams'))
+    return redirect(url_for('manage_exam', exam_id=exam_id))
 
 @app.route('/exam/<int:exam_id>', methods=['GET', 'POST'])
 def view_exam(exam_id):
@@ -857,7 +917,7 @@ def view_exam(exam_id):
         
         conn.commit()
         conn.close()
-        return render_template('exam_result.html', exam=exam, results=results, correct_count=correct_count, total=total_q)
+        return render_template('exam_result.html', exam=exam, results=results, score=correct_count, total=total_q, student_name=student_name)
         
     conn.close()
     return render_template('exam.html', exam=exam, questions=questions)

@@ -16,22 +16,22 @@
 
 <!-- Simulados e Provas (Fase 6) -->
 {% if exams %}
-<h3 style="margin-bottom: 1rem; color: #eab308; display: flex; align-items: center; gap: 0.5rem; margin-top: 2rem;">
-    <span>📝</span> Simulados e Provas em Destaque
+<h3 style="margin-bottom: 1.5rem; color: #eab308; display: flex; align-items: center; gap: 0.8rem; margin-top: 2rem; border-bottom: 2px solid #eab308; padding-bottom: 0.5rem; width: fit-content;">
+    <span>📝</span> Simulados e Provas Ativas
 </h3>
-<div style="display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 1.5rem; margin-bottom: 4rem;">
+<div style="display: grid; grid-template-columns: repeat(auto-fill, minmax(320px, 1fr)); gap: 1.5rem; margin-bottom: 4rem;">
     {% for exam in exams %}
-    <div class="card" style="border: 2px solid #eab308; background: rgba(234, 179, 8, 0.05); padding: 2rem; position: relative; overflow: hidden; transition: transform 0.2s;" onmouseover="this.style.transform='translateY(-5px)'" onmouseout="this.style.transform='translateY(0)'">
-        <div style="position: absolute; top:0; right:0; padding: 4px 12px; background: #eab308; color: black; font-weight: bold; font-size: 0.7rem; border-bottom-left-radius: 8px;">SIMULADO ATIVO</div>
-        <h4 style="color: white; font-size: 1.25rem; margin-bottom: 1rem;">{{ exam.title }}</h4>
-        <div style="font-size: 0.85rem; color: #94a3b8; margin-bottom: 1.5rem; display: flex; align-items: center; gap: 0.4rem;">
+    <div class="card" style="border: 2px solid #eab308; background: rgba(0,0,0,0.4); padding: 2rem; border-radius: 12px; position: relative; overflow: hidden; box-shadow: 0 10px 20px rgba(0,0,0,0.3);">
+        <div style="position: absolute; top:0; right:0; padding: 6px 16px; background: #eab308; color: black; font-weight: bold; font-size: 0.75rem; border-bottom-left-radius: 12px; text-transform: uppercase;">Simulado</div>
+        <h4 style="color: white; font-size: 1.4rem; margin-bottom: 0.8rem;">{{ exam.title }}</h4>
+        <div style="font-size: 0.9rem; color: #94a3b8; margin-bottom: 1.5rem;">
             {% if exam.end_at %}
-                <span style="color: #ef4444;">⏰</span> Expira em: {{ exam.end_at.split('T')[0] }} às {{ exam.end_at.split('T')[1] }}
+                <span style="color: #ef4444; font-weight: bold;">⚠️ Expira:</span> {{ exam.end_at.replace('T', ' ') }}
             {% else %}
-                <span style="color: #10b981;">🟢</span> Disponível por tempo indeterminado
+                <span style="color: #10b981; font-weight: bold;">🟢 Aberto:</span> Sem prazo fixo
             {% endif %}
         </div>
-        <a href="{{ url_for('view_exam', exam_id=exam.id) }}" class="btn" style="background: #eab308; color: black; font-weight: bold; width: 100%; text-align: center; text-decoration: none; border:none; display: block; height: 50px; line-height: 50px; padding: 0;">INICIAR PROVA 🚀</a>
+        <a href="{{ url_for('view_exam', exam_id=exam.id) }}" class="btn" style="background: #eab308; color: black; font-weight: bold; width: 100%; border:none; display: block; height: 55px; line-height: 55px; text-align: center; border-radius: 8px; transition: filter 0.2s;">INICIAR SIMULADO 🏁</a>
     </div>
     {% endfor %}
 </div>

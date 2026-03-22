@@ -60,80 +60,21 @@
     </div>
 </div>
 
-<h2 style="margin-top: 4rem; margin-bottom: 2rem;">2. Configurar Gabaritos e Resolvê-las</h2>
+<h2 style="margin-top: 4rem; margin-bottom: 2rem;">2. Meus Simulados Ativos</h2>
 <div class="panel-grid">
     {% for exam in exams %}
-    <div class="card" style="border: 2px solid {% if exam.end_at %}#ef4444{% else %}var(--primary){% endif %}; background: rgba(0,0,0,0.3);">
-        <h3 style="color: white; margin-bottom: 0.5rem; display: flex; justify-content: space-between;">
-            {{ exam.title }}
-            {% if exam.pdf_path %}
-            <span style="font-size: 0.7rem; color: #10b981;">[PDF ANEXADO]</span>
-            {% endif %}
-        </h3>
-        
-        <div style="background: rgba(255,255,255,0.02); padding: 1.5rem; border-radius: 12px; border: 1px dashed var(--border); margin-top: 1.5rem;">
-            <h4 style="color: var(--primary); margin-bottom: 1.5rem;">➕ Adicionar Novo Item ao Gabarito</h4>
-            <form action="{{ url_for('add_question', exam_id=exam.id) }}" method="POST" enctype="multipart/form-data">
-                <div class="form-group">
-                    <label style="font-size: 0.85rem;">Print da Questão (Se não usar PDF):</label>
-                    <input type="file" name="question_image" class="form-control" style="font-size: 0.8rem;">
-                </div>
-                
-                <div style="padding: 1rem; background: rgba(0,0,0,0.2); border-radius: 8px; margin-bottom: 1.5rem;">
-                    <label style="color: #eab308; font-weight: bold;">💡 Resolução Passo-a-Passo:</label>
-                    <textarea name="resolution_text" class="form-control" rows="3" placeholder="Escreva aqui a explicação técnica..." style="margin-bottom: 0.5rem; margin-top: 0.5rem;"></textarea>
-                    <input type="file" name="resolution_image" class="form-control" style="font-size: 0.8rem;" title="Ou envie uma foto da resolução">
-                </div>
-
-                <div class="form-group">
-                    <label style="font-size: 0.85rem;">Alternativa Correta (Gabarito):</label>
-                    <select name="correct_option" class="form-control">
-                        {% for op in ['A', 'B', 'C', 'D', 'E'] %}
-                        <option value="{{ op }}">{{ op }}</option>
-                        {% endfor %}
-                    </select>
-                </div>
-                <button type="submit" class="btn" style="width: 100%; padding: 0.6rem;">ANEXAR QUESTÃO AO SIMULADO</button>
-            </form>
-
-            <!-- GABARITO RÁPIDO -->
-            <div style="margin-top: 2rem; padding: 1.5rem; background: rgba(16, 185, 129, 0.05); border-radius: 12px; border: 1px dashed #10b981;">
-                <h4 style="color: #10b981; margin-bottom: 0.5rem;">⚡ Gerar Gabarito Rápido</h4>
-                <p style="font-size: 0.75rem; color: #94a3b8; margin-bottom: 1rem;">Ideal para provas com PDF. Digite a sequência (ex: A B C D A). Isso criará todas as questões de uma vez.</p>
-                <form action="{{ url_for('add_multiple_questions', exam_id=exam.id) }}" method="POST">
-                    <input type="text" name="gabarito_text" class="form-control" placeholder="A B C D E..." required>
-                    <button type="submit" class="btn" style="width: 100%; margin-top: 1rem; background: #10b981; border: none; font-weight: bold;">CRIAR GABARITO EM MASSA</button>
-                </form>
+    <div class="card" style="border: 2px solid {% if exam.end_at %}#ef4444{% else %}#eab308{% endif %}; background: rgba(0,0,0,0.3); transition: transform 0.2s; cursor: pointer;" onclick="window.location='{{ url_for('manage_exam', exam_id=exam.id) }}'">
+        <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 1rem;">
+            <div>
+                <h3 style="color: white; margin-bottom: 0.5rem;">📁 {{ exam.title }}</h3>
+                <span style="font-size: 0.8rem; color: #94a3b8;">📅 Início: {{ exam.start_at[11:] if exam.start_at else 'Imediato' }} | {{ exam.questions|length }} Questões</span>
             </div>
-
-            <!-- LISTAGEM DE QUESTÕES EXISTENTES -->
-            <div style="margin-top: 2rem;">
-                <h4 style="color: white; margin-bottom: 1rem; border-bottom: 1px solid rgba(255,255,255,0.1); padding-bottom: 0.5rem;">📋 Itens Atuais do Simulado</h4>
-                <div style="display: grid; gap: 0.8rem;">
-                    {% for q in exam.questions %}
-                    <div style="background: rgba(0,0,0,0.4); padding: 1rem; border-radius: 8px; display: flex; justify-content: space-between; align-items: center; border: 1px solid rgba(255,255,255,0.05);">
-                        <div style="display: flex; align-items: center; gap: 1rem;">
-                            <span style="background: var(--primary); color: white; width: 24px; height: 24px; display: flex; align-items: center; justify-content: center; border-radius: 50%; font-size: 0.7rem; font-weight: bold;">{{ loop.index }}</span>
-                            <div style="font-size: 0.9rem; color: #cbd5e1;">
-                                <strong>Gabarito: {{ q.correct_option }}</strong>
-                                {% if q.question_image %}
-                                <span style="font-size: 0.7rem; color: #94a3b8; margin-left: 0.5rem;">[Imagem Anexada]</span>
-                                {% endif %}
-                                {% if q.resolution_text or q.resolution_image %}
-                                <span style="font-size: 0.7rem; color: #eab308; margin-left: 0.5rem;">[Com Resolução]</span>
-                                {% endif %}
-                            </div>
-                        </div>
-                        <form action="{{ url_for('delete_question', exam_id=exam.id, question_id=q.id) }}" method="POST" onsubmit="return confirm('Excluir esta questão permanentemente?');">
-                            <button type="submit" class="btn btn-danger" style="padding: 0.3rem 0.8rem; font-size: 0.7rem; background: #ef4444; color: white; border: none;">Excluir</button>
-                        </form>
-                    </div>
-                    {% else %}
-                    <p style="font-size: 0.8rem; color: #64748b; text-align: center;">Nenhuma questão cadastrada para este simulado.</p>
-                    {% endfor %}
-                </div>
-            </div>
+            <a href="{{ url_for('manage_exam', exam_id=exam.id) }}" class="btn" style="padding: 0.5rem 1rem; background: #eab308; color: black; font-weight: bold; border: none;">ABRIR PASTA</a>
         </div>
+        
+        {% if exam.end_at %}
+        <div style="font-size: 0.75rem; color: #ef4444; font-weight: bold;">⚠️ Expira em: {{ exam.end_at.replace('T', ' ') }}</div>
+        {% endif %}
     </div>
     {% else %}
     <p style="color: #64748b; grid-column: span 2; text-align: center;">Nenhum simulado criado.</p>
