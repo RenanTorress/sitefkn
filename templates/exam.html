@@ -11,6 +11,19 @@
 </div>
 
 <form method="POST" id="examForm">
+    {% if exam.pdf_path %}
+    <div style="margin-bottom: 3rem; background: rgba(59, 130, 246, 0.05); padding: 2rem; border-radius: 12px; border: 2px solid var(--primary);">
+        <h2 style="color: var(--primary); margin-bottom: 1.5rem; display: flex; align-items: center; gap: 0.8rem;">
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="16" y1="13" x2="8" y2="13"></line><line x1="16" y1="17" x2="8" y2="17"></line><polyline points="10 9 9 9 8 9"></polyline></svg>
+            PDF de Enunciados da Prova
+        </h2>
+        <iframe src="{{ url_for('static', filename='uploads/exams/' + exam.pdf_path) }}" style="width: 100%; height: 750px; border-radius: 8px; border: none; box-shadow: 0 4px 15px rgba(0,0,0,0.5);"></iframe>
+        <div style="margin-top: 1rem; text-align: right;">
+            <a href="{{ url_for('static', filename='uploads/exams/' + exam.pdf_path) }}" target="_blank" class="btn" style="padding: 0.5rem 1.5rem; font-size: 0.8rem;">Visualizar em Nova Aba 📥</a>
+        </div>
+    </div>
+    {% endif %}
+
     <div style="background: rgba(234, 179, 8, 0.1); padding: 1.5rem; border-radius: 12px; margin-bottom: 2rem; border: 1px solid #eab308;">
         <label style="color: #eab308; font-weight: bold; margin-bottom: 0.5rem; display: block;">Identifique-se para o Professor:</label>
         <input type="text" name="student_name" class="form-control" placeholder="Seu Nome Completo" required style="font-size: 1.2rem; background: rgba(0,0,0,0.5);">
@@ -21,9 +34,13 @@
             ITEM {{ loop.index }}
         </div>
         
+        {% if q.question_image %}
         <div style="margin-top: 3rem; text-align: center;">
             <img src="{{ url_for('static', filename='uploads/exams/' + q.question_image) }}" style="max-width: 100%; border-radius: 8px; box-shadow: 0 4px 20px rgba(0,0,0,0.5); border: 1px solid rgba(255,255,255,0.1);">
         </div>
+        {% else %}
+        <div style="margin-top: 4rem;"></div>
+        {% endif %}
         
         <div style="margin-top: 2rem; display: flex; justify-content: center; gap: 1rem; flex-wrap: wrap; padding: 1.5rem; background: rgba(0,0,0,0.3); border-radius: 12px;">
             {% for op in ['A', 'B', 'C', 'D', 'E'] %}

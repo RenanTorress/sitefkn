@@ -539,6 +539,14 @@ with app.app_context():
     except: pass
     try: conn.execute('ALTER TABLE users ADD COLUMN role TEXT DEFAULT "admin"'); conn.commit()
     except: pass
+    try: conn.execute('ALTER TABLE bug_reports ADD COLUMN is_resolved BOOLEAN DEFAULT 0'); conn.commit()
+    except: pass
+    try: conn.execute('ALTER TABLE exams ADD COLUMN pdf_path TEXT'); conn.commit()
+    except: pass
+    try: conn.execute('ALTER TABLE exam_questions ADD COLUMN resolution_text TEXT'); conn.commit()
+    except: pass
+    try: conn.execute('ALTER TABLE exam_questions ALTER COLUMN question_image DROP NOT NULL'); conn.commit()
+    except: pass
     
     # Forçar dados do DESENVOLVEDOR (Garantir que a senha seja a correta)
     dev_exists = conn.execute('SELECT * FROM users WHERE email = ?', ('desenvolper@fkn.com',)).fetchone()
@@ -605,9 +613,19 @@ def report_bug():
 def view_reports():
     if 'user_id' not in session: return redirect(url_for('login'))
     conn = get_db()
-    reports = conn.execute('SELECT * FROM bug_reports ORDER BY created_at DESC').fetchall()
+    reports = conn.execute('SELECT * FROM bug_reports ORDER BY is_resolved ASC, created_at DESC').fetchall()
     conn.close()
     return render_template('admin_reports.html', reports=reports)
+
+@app.route('/admin/reports/<int:report_id>/resolve', methods=['POST'])
+def resolve_bug(report_id):
+    if 'user_id' not in session: return redirect(url_for('login'))
+    conn = get_db()
+    conn.execute('UPDATE bug_reports SET is_resolved = 1 WHERE id = ?', (report_id,))
+    conn.commit()
+    conn.close()
+    flash('Erro marcado como resolvido!', 'success')
+    return redirect(url_for('admin_reports'))
 
 @app.route('/admin/dev_panel', methods=['GET', 'POST'])
 def dev_panel():
@@ -617,7 +635,7 @@ def dev_panel():
     
     conn = get_db()
     if request.method == 'POST':
-        keys = ['dev_instagram_url', 'dev_name', 'show_dev_name', 'x_url', 'facebook_url', 'whatsapp_url']
+        keys = ['dev_instagram_url', 'dev_name', 'show_dev_name', 'x_url', 'facebook_url', 'whatsapp_url', 'footer_rights']
         for k in keys:
             val = request.form.get(k, '')
             conn.execute('INSERT INTO settings (key, value) VALUES (?, ?) ON CONFLICT(key) DO UPDATE SET value=?', (k, val, val))
@@ -652,10 +670,23 @@ def admin_exams():
     if request.method == 'POST':
         title = request.form.get('title')
         folder_id = request.form.get('folder_id')
-        start_at = request.form.get('start_at')
-        end_at = request.form.get('end_at')
+        start_date = request.form.get('start_date')
+        start_time = request.form.get('start_time')
+        end_date = request.form.get('end_date')
+        end_time = request.form.get('end_time')
+        pdf_file = request.files.get('pdf_file')
+        
+        start_at = f"{start_date}T{start_time}" if start_date and start_time else None
+        end_at = f"{end_date}T{end_time}" if end_date and end_time else None
         if not folder_id: folder_id = None
-        conn.execute('INSERT INTO exams (title, folder_id, start_at, end_at) VALUES (?, ?, ?, ?)', (title, folder_id, start_at, end_at))
+        
+        pdf_filename = None
+        if pdf_file and pdf_file.filename != '' and allowed_file(pdf_file.filename):
+            os.makedirs(os.path.join(app.config['UPLOAD_FOLDER'], 'exams'), exist_ok=True)
+            pdf_filename = secure_filename(f"pdf_{int(time.time())}_{pdf_file.filename}")
+            pdf_file.save(os.path.join(app.config['UPLOAD_FOLDER'], 'exams', pdf_filename))
+        
+        conn.execute('INSERT INTO exams (title, folder_id, pdf_path, start_at, end_at) VALUES (?, ?, ?, ?, ?)', (title, folder_id, pdf_filename, start_at, end_at))
         conn.commit()
         flash('Modo Prova Criado!', 'success')
     
@@ -669,26 +700,26 @@ def add_question(exam_id):
     if 'user_id' not in session: return redirect(url_for('login'))
     q_file = request.files.get('question_image')
     r_file = request.files.get('resolution_image')
+    r_text = request.form.get('resolution_text')
     correct_option = request.form.get('correct_option', 'A')
     
     q_filename = None
     r_filename = None
     os.makedirs(os.path.join(app.config['UPLOAD_FOLDER'], 'exams'), exist_ok=True)
     
-    if q_file and allowed_file(q_file.filename):
+    if q_file and q_file.filename != '' and allowed_file(q_file.filename):
         q_filename = secure_filename(f"q_{exam_id}_{int(time.time())}_{q_file.filename}")
         q_file.save(os.path.join(app.config['UPLOAD_FOLDER'], 'exams', q_filename))
     
-    if r_file and allowed_file(r_file.filename):
+    if r_file and r_file.filename != '' and allowed_file(r_file.filename):
         r_filename = secure_filename(f"r_{exam_id}_{int(time.time())}_{r_file.filename}")
         r_file.save(os.path.join(app.config['UPLOAD_FOLDER'], 'exams', r_filename))
         
-    if q_filename:
-        conn = get_db()
-        conn.execute('INSERT INTO exam_questions (exam_id, question_image, resolution_image, correct_option) VALUES (?, ?, ?, ?)', (exam_id, q_filename, r_filename, correct_option))
-        conn.commit()
-        conn.close()
-        flash('Questão Adicionada!', 'success')
+    conn = get_db()
+    conn.execute('INSERT INTO exam_questions (exam_id, question_image, resolution_image, resolution_text, correct_option) VALUES (?, ?, ?, ?, ?)', (exam_id, q_filename, r_filename, r_text, correct_option))
+    conn.commit()
+    conn.close()
+    flash('Questão Adicionada!', 'success')
     return redirect(url_for('admin_exams'))
 
 @app.route('/exam/<int:exam_id>', methods=['GET', 'POST'])
@@ -712,7 +743,8 @@ def view_exam(exam_id):
                 'correct_ans': q['correct_option'],
                 'is_correct': is_correct,
                 'question_image': q['question_image'],
-                'resolution_image': q['resolution_image']
+                'resolution_image': q['resolution_image'],
+                'resolution_text': q['resolution_text']
             })
         
         # Salvar Submissão para Estatísticas

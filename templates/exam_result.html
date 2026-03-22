@@ -42,17 +42,26 @@
         </div>
     </div>
 
-    {% if r.resolution_image %}
-    <div style="margin-top: 2rem; padding: 2rem; background: rgba(234, 179, 8, 0.03); border-radius: 12px; border: 1px dashed #eab308;">
-        <div style="display: flex; align-items: center; gap: 0.8rem; margin-bottom: 1.5rem; color: #eab308; font-weight: bold;">
-            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2L2 7l10 5l10 -5l-10 -5zM2 17l10 5l10 -5M2 12l10 5l10 -5"></path></svg>
-            Resolução Técnicamente Comentada
+        {% if r.resolution_image or r.resolution_text %}
+        <div style="border-top: 1px dashed var(--border); padding-top: 1.5rem; margin-top: 2rem;">
+            <p style="color: #eab308; font-weight: bold; margin-bottom: 1.2rem; display: flex; align-items: center; gap: 0.5rem;">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2L2 7l10 5l10 -5l-10 -5zM2 17l10 5l10 -5M2 12l10 5l10 -5"></path></svg>
+                Resolução Comentada:
+            </p>
+            
+            {% if r.resolution_text %}
+            <div style="background: rgba(234, 180, 8, 0.05); padding: 1.5rem; border-radius: 8px; border: 1px solid rgba(234, 180, 8, 0.1); color: #f1f5f9; line-height: 1.6; margin-bottom: 1.5rem; font-size: 1.1rem;">
+                {{ r.resolution_text }}
+            </div>
+            {% endif %}
+
+            {% if r.resolution_image %}
+            <div style="text-align: center;">
+                <img src="{{ url_for('static', filename='uploads/exams/' + r.resolution_image) }}" style="max-width: 100%; border-radius: 8px; filter: drop-shadow(0 0 20px rgba(234, 179, 8, 0.1));">
+            </div>
+            {% endif %}
         </div>
-        <div style="text-align: center;">
-            <img src="{{ url_for('static', filename='uploads/exams/' + r.resolution_image) }}" style="max-width: 100%; border-radius: 8px; filter: drop-shadow(0 0 20px rgba(234, 179, 8, 0.1));">
-        </div>
-    </div>
-    {% endif %}
+        {% endif %}
 </div>
 {% endfor %}
 

@@ -37,10 +37,12 @@
         <h2 style="margin-bottom: 1.5rem;">FAQ Ativa</h2>
         <div style="max-height: 600px; overflow-y: auto;">
         {% for faq in faqs %}
-        <div style="padding: 1.2rem; background: rgba(0,0,0,0.3); border: 1px solid var(--border); margin-bottom: 1rem; border-radius: 12px;">
-            <div style="font-weight: bold; color: white; margin-bottom: 0.5rem; font-size: 1.1rem;">{{ faq.question }}</div>
-            <div style="font-size: 0.9rem; color: #94a3b8; font-style: italic; margin-bottom: 0.5rem;">{{ faq.answer }}</div>
-            <div style="font-size: 0.8rem; color: #64748b;">Link: <strong style="color: #eab308;">{{ faq.keyword or 'Nenhum' }}</strong> &rarr; {{ faq.redirect_url or '-' }}</div>
+        <div style="padding: 1.5rem; background: rgba(59, 130, 246, 0.1); border: 1px solid var(--primary); margin-bottom: 1rem; border-radius: 12px;">
+            <div style="font-weight: bold; color: white; margin-bottom: 0.8rem; font-size: 1.2rem; border-bottom: 1px solid rgba(255,255,255,0.05); padding-bottom: 0.5rem;">{{ faq.question }}</div>
+            <div style="font-size: 1rem; color: #f1f5f9; line-height: 1.5; margin-bottom: 1rem;">{{ faq.answer }}</div>
+            <div style="font-size: 0.85rem; color: #94a3b8; background: rgba(0,0,0,0.3); padding: 0.5rem 1rem; border-radius: 6px; display: inline-block;">
+                Link: <strong style="color: #eab308; font-family: monospace;">{{ faq.keyword or 'Nenhum' }}</strong> &rarr; {{ faq.redirect_url or '-' }}
+            </div>
         </div>
         {% else %}
         <div style="text-align: center; color: #64748b; padding: 3rem;">Nenhuma FAQ cadastrada.</div>

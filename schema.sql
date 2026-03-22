@@ -66,6 +66,7 @@ CREATE TABLE IF NOT EXISTS bug_reports (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     message TEXT NOT NULL,
     attachment_path TEXT,
+    is_resolved BOOLEAN DEFAULT 0,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
@@ -73,6 +74,7 @@ CREATE TABLE IF NOT EXISTS exams (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     title TEXT NOT NULL,
     folder_id INTEGER,
+    pdf_path TEXT,
     start_at TIMESTAMP,
     end_at TIMESTAMP,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
@@ -82,8 +84,9 @@ CREATE TABLE IF NOT EXISTS exams (
 CREATE TABLE IF NOT EXISTS exam_questions (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     exam_id INTEGER NOT NULL,
-    question_image TEXT NOT NULL,
+    question_image TEXT,
     resolution_image TEXT,
+    resolution_text TEXT,
     correct_option CHAR(1), -- A, B, C, D, E
     FOREIGN KEY(exam_id) REFERENCES exams(id) ON DELETE CASCADE
 );
@@ -117,6 +120,7 @@ INSERT OR IGNORE INTO settings (key, value) VALUES ('show_dev_name', '1');
 INSERT OR IGNORE INTO settings (key, value) VALUES ('x_url', '');
 INSERT OR IGNORE INTO settings (key, value) VALUES ('facebook_url', '');
 INSERT OR IGNORE INTO settings (key, value) VALUES ('whatsapp_url', '');
+INSERT OR IGNORE INTO settings (key, value) VALUES ('footer_rights', 'Física com FKN - Todos os direitos reservados.');
 
 -- Base FAQ
 INSERT OR IGNORE INTO faqs (question, answer, keyword, redirect_url) VALUES ('Onde acesso os materiais?', 'Você pode acessar todos os materiais e PDFs na nossa área exclusiva de materiais.', 'materiais', '/materiais');

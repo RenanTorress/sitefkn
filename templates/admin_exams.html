@@ -2,22 +2,29 @@
 {% block content %}
 <div class="header-title" style="text-align: left; margin-bottom: 3rem; display: flex; justify-content: space-between; align-items: flex-end;">
     <div>
-        <h1>📝 Modo Prova / Gabaritos Dinâmicos</h1>
-        <p>Crie simulados com correção automática e tempo limite para os alunos.</p>
+        <h1>📝 Gestão de Simulados (Modo Prova)</h1>
+        <p>Crie exames complexos com PDF inteiro e resoluções comentadas (texto + foto).</p>
     </div>
     <a href="{{ url_for('admin') }}" class="btn">Voltar ao Painel</a>
 </div>
 
 <div class="panel-grid">
-    <div class="card">
-        <h2 style="color: #eab308; margin-bottom: 1.5rem;">1. Criar Novo Simulado</h2>
-        <form method="POST">
+    <div class="card" style="border: 2px solid #eab308;">
+        <h2 style="color: #eab308; margin-bottom: 1.5rem;">1. Criar Novo Simulado Profissional</h2>
+        <form method="POST" enctype="multipart/form-data">
             <div class="form-group">
-                <label>Nome do Exame (Título Impactante):</label>
-                <input type="text" name="title" class="form-control" required placeholder="Simulado de Cinemática - Semana 01">
+                <label>Título do Simulado:</label>
+                <input type="text" name="title" class="form-control" required placeholder="Ex: Simulado ENEM - Física Térmica">
             </div>
+            
             <div class="form-group">
-                <label>Em qual pasta este exame ficará visível?</label>
+                <label style="color: var(--primary); font-weight: bold;">📄 Upload do PDF Inteiro (Opcional):</label>
+                <p style="font-size: 0.8rem; color: #94a3b8; margin-bottom: 0.5rem;">Se enviado, o aluno verá o PDF acima das questões para consulta.</p>
+                <input type="file" name="pdf_file" class="form-control" accept=".pdf">
+            </div>
+
+            <div class="form-group">
+                <label>Localização (Pasta):</label>
                 <select name="folder_id" class="form-control">
                     <option value="">(Raiz de Materiais)</option>
                     {% for f in folders %}
@@ -25,56 +32,73 @@
                     {% endfor %}
                 </select>
             </div>
-            <div class="form-group">
-                <label>Data de Liberação (Facultativo):</label>
-                <input type="datetime-local" name="start_at" class="form-control">
+
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem;">
+                <div class="form-group">
+                    <label>Data de Início:</label>
+                    <input type="date" name="start_date" class="form-control">
+                </div>
+                <div class="form-group">
+                    <label>Hora de Início:</label>
+                    <input type="time" name="start_time" class="form-control">
+                </div>
             </div>
-            <div class="form-group">
-                <label>Prazo Máximo de Entrega (Tempo Limitado):</label>
-                <input type="datetime-local" name="end_at" class="form-control">
+
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem;">
+                <div class="form-group">
+                    <label style="color: #ef4444;">Data de Expiração:</label>
+                    <input type="date" name="end_date" class="form-control">
+                </div>
+                <div class="form-group">
+                    <label style="color: #ef4444;">Hora de Expiração:</label>
+                    <input type="time" name="end_time" class="form-control">
+                </div>
             </div>
-            <button type="submit" class="btn" style="width: 100%; background: #eab308; color: black; font-weight: bold;">CRIAR MODO PROVA ✅</button>
+
+            <button type="submit" class="btn" style="width: 100%; background: #eab308; color: black; font-weight: bold; margin-top: 1rem;">CRIAR SIMULADO TÉCNICO ✅</button>
         </form>
     </div>
 </div>
 
-<h2 style="margin-top: 4rem; margin-bottom: 2rem;">2. Gerenciar Questões nos Simulados Ativos</h2>
+<h2 style="margin-top: 4rem; margin-bottom: 2rem;">2. Configurar Gabaritos e Resolvê-las</h2>
 <div class="panel-grid">
     {% for exam in exams %}
     <div class="card" style="border: 2px solid {% if exam.end_at %}#ef4444{% else %}var(--primary){% endif %}; background: rgba(0,0,0,0.3);">
         <h3 style="color: white; margin-bottom: 0.5rem; display: flex; justify-content: space-between;">
             {{ exam.title }}
-            {% if exam.end_at %}
-            <span class="badge" style="background: #ef4444; font-size: 0.7rem;">🕒 TEMPO LIMITADO</span>
+            {% if exam.pdf_path %}
+            <span style="font-size: 0.7rem; color: #10b981;">[PDF ANEXADO]</span>
             {% endif %}
         </h3>
-        <p style="font-size: 0.8rem; color: #94a3b8; margin-bottom: 2rem;">Início: {{ exam.start_at or 'Imediato' }} | Fim: {{ exam.end_at or 'Aberto' }}</p>
         
-        <div style="background: rgba(255,255,255,0.02); padding: 1.5rem; border-radius: 12px; border: 1px dashed var(--border);">
-            <h4 style="color: var(--primary); margin-bottom: 1rem;">➕ Adicionar Questão Técnica</h4>
+        <div style="background: rgba(255,255,255,0.02); padding: 1.5rem; border-radius: 12px; border: 1px dashed var(--border); margin-top: 1.5rem;">
+            <h4 style="color: var(--primary); margin-bottom: 1.5rem;">➕ Adicionar Novo Item ao Gabarito</h4>
             <form action="{{ url_for('add_question', exam_id=exam.id) }}" method="POST" enctype="multipart/form-data">
                 <div class="form-group">
-                    <label style="font-size: 0.85rem;">Print da Pergunta (Questão):</label>
-                    <input type="file" name="question_image" class="form-control" required style="font-size: 0.8rem;">
+                    <label style="font-size: 0.85rem;">Print da Questão (Se não usar PDF):</label>
+                    <input type="file" name="question_image" class="form-control" style="font-size: 0.8rem;">
                 </div>
-                <div class="form-group">
-                    <label style="font-size: 0.85rem;">Print da Resolução (Gabarito Explicado):</label>
-                    <input type="file" name="resolution_image" class="form-control" style="font-size: 0.8rem;">
+                
+                <div style="padding: 1rem; background: rgba(0,0,0,0.2); border-radius: 8px; margin-bottom: 1.5rem;">
+                    <label style="color: #eab308; font-weight: bold;">💡 Resolução Passo-a-Passo:</label>
+                    <textarea name="resolution_text" class="form-control" rows="3" placeholder="Escreva aqui a explicação técnica..." style="margin-bottom: 0.5rem; margin-top: 0.5rem;"></textarea>
+                    <input type="file" name="resolution_image" class="form-control" style="font-size: 0.8rem;" title="Ou envie uma foto da resolução">
                 </div>
+
                 <div class="form-group">
-                    <label style="font-size: 0.85rem;">Alternativa Correta (Oficial):</label>
+                    <label style="font-size: 0.85rem;">Alternativa Correta (Gabarito):</label>
                     <select name="correct_option" class="form-control">
                         {% for op in ['A', 'B', 'C', 'D', 'E'] %}
                         <option value="{{ op }}">{{ op }}</option>
                         {% endfor %}
                     </select>
                 </div>
-                <button type="submit" class="btn" style="width: 100%; padding: 0.6rem;">Anexar à Prova</button>
+                <button type="submit" class="btn" style="width: 100%; padding: 0.6rem;">ANEXAR QUESTÃO AO SIMULADO</button>
             </form>
         </div>
     </div>
     {% else %}
-    <p style="color: #64748b; grid-column: span 2; text-align: center;">Nenhum simulado criado. Comece pelo formulário acima.</p>
+    <p style="color: #64748b; grid-column: span 2; text-align: center;">Nenhum simulado criado.</p>
     {% endfor %}
 </div>
 {% endblock %}
