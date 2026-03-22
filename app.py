@@ -119,6 +119,8 @@ def login():
             session['role'] = user['role']
             session['email'] = user['email']
             session['name'] = user['name'] or user['email']
+            try: session['profile_pic'] = user['profile_pic']
+            except: session['profile_pic'] = None
             log_action(user['id'], 'Login', f"Usuário {user['email']} entrou no sistema")
             return redirect(url_for('admin'))
         else:
@@ -571,6 +573,10 @@ def download_forum(filename): return send_from_directory(os.path.join(app.config
 
 with app.app_context():
     init_db()  # Ensure tables exist
+    conn = get_db()
+    try: conn.execute('ALTER TABLE users ADD COLUMN profile_pic TEXT'); conn.commit()
+    except: pass
+    conn.close()
     conn = get_db()
     
     # Robust Migrations for Render (SQLite and Gunicorn safe)

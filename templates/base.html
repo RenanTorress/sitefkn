@@ -41,7 +41,14 @@
             <a href="{{ url_for('forums') }}">Fórum</a>
             <a href="{{ url_for('faq') }}" style="color: #eab308; font-weight: bold;"><span>❓</span> Dúvidas (FAQ)</a>
             {% if session.get('user_id') %}
-                <span style="color:#f1f5f9; font-weight: bold; font-size: 0.95rem; margin-left: 1rem;">Olá, {{ session.get('name') or 'Mestre' }}</span>
+                <div style="display: flex; align-items: center; gap: 0.75rem; margin-left: 1rem;">
+                    {% if session.get('profile_pic') %}
+                        <img src="{{ session.get('profile_pic') }}" style="width: 32px; height: 32px; border-radius: 50%; object-fit: cover; border: 2px solid var(--primary);">
+                    {% else %}
+                        <div style="width: 32px; height: 32px; border-radius: 50%; background: var(--primary); display: flex; align-items: center; justify-content: center; font-size: 0.9rem;">👤</div>
+                    {% endif %}
+                    <span style="color:#f1f5f9; font-weight: bold; font-size: 0.95rem;">Olá, {{ session.get('name') or 'Mestre' }}</span>
+                </div>
                 <a href="{{ url_for('admin') }}">Dashboard Master</a>
                 <a href="{{ url_for('logout') }}" class="btn-logout">Sair</a>
             {% else %}
