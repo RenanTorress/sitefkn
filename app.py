@@ -26,6 +26,31 @@ ALLOWED_EXTENSIONS = {'pdf', 'png', 'jpg', 'jpeg', 'gif', 'doc', 'docx', 'zip'}
 def allowed_file(filename):
     return '.' in filename and filename.rsplit('.', 1)[1].lower() in ALLOWED_EXTENSIONS
 
+def supabase_upload(bucket, path, file_content, content_type):
+    """Faz upload para o Supabase e retorna a URL pública como string.
+    Compatível com supabase-py 2.x onde get_public_url retorna objeto."""
+    try:
+        supabase.storage.from_(bucket).upload(
+            path, file_content,
+            file_options={"content-type": content_type, "upsert": True}
+        )
+    except Exception:
+        # Arquivo já existe: remove e re-envia
+        try:
+            supabase.storage.from_(bucket).remove([path])
+        except Exception:
+            pass
+        supabase.storage.from_(bucket).upload(
+            path, file_content,
+            file_options={"content-type": content_type}
+        )
+    # supabase-py 2.x retorna objeto PublicURLResponse; extrair a string
+    result = supabase.storage.from_(bucket).get_public_url(path)
+    if isinstance(result, str):
+        return result
+    # Tenta atributos do objeto retornado
+    return getattr(result, 'public_url', None) or getattr(result, 'publicUrl', None) or str(result)
+
 def format_size(size_in_bytes):
     if size_in_bytes is None: return "0 B"
     for unit in ['B', 'KB', 'MB', 'GB']:
@@ -200,28 +225,9 @@ def edit_profile():
             filename = f"avatar_{user_id}_{secure_filename(file.filename)}"
             
             if supabase:
-                # Upload to Supabase Storage
                 file_content = file.read()
                 content_type = file.content_type or 'image/jpeg'
-                try:
-                    supabase.storage.from_('avatars').upload(
-                        filename,
-                        file_content,
-                        file_options={"content-type": content_type, "upsert": "true"}
-                    )
-                except Exception:
-                    # Arquivo já existe: remove e re-envia
-                    try:
-                        supabase.storage.from_('avatars').remove([filename])
-                    except Exception:
-                        pass
-                    supabase.storage.from_('avatars').upload(
-                        filename,
-                        file_content,
-                        file_options={"content-type": content_type}
-                    )
-                # Get public URL
-                pic_url = supabase.storage.from_('avatars').get_public_url(filename)
+                pic_url = supabase_upload('avatars', filename, file_content, content_type)
             else:
                 # Fallback to local (not recommended for production on Render)
                 img_dir = os.path.join(app.config['UPLOAD_FOLDER'], 'avatars')
@@ -264,12 +270,7 @@ def admin_upload():
             if supabase:
                 file_content = file.read()
                 content_type = file.content_type or 'application/octet-stream'
-                supabase.storage.from_('materiais').upload(
-                    filename, file_content,
-                    file_options={"content-type": content_type, "upsert": "true"}
-                )
-                file_url = supabase.storage.from_('materiais').get_public_url(filename)
-                # Use filename as filepath in DB but it will be a URL or unique Key
+                file_url = supabase_upload('materiais', filename, file_content, content_type)
                 storage_path = file_url
             else:
                 filepath = os.path.join(app.config['UPLOAD_FOLDER'], filename)
@@ -721,12 +722,7 @@ def report_bug():
         if supabase:
             file_content = file.read()
             content_type = file.content_type or 'application/octet-stream'
-            supabase.storage.from_('materiais').upload(
-                f"bugs/{filename}", file_content,
-                file_options={"content-type": content_type, "upsert": "true"}
-            )
-            attachment_url = supabase.storage.from_('materiais').get_public_url(f"bugs/{filename}")
-            filename = attachment_url
+            filename = supabase_upload('materiais', f"bugs/{filename}", file_content, content_type)
         else:
             os.makedirs(os.path.join(app.config['UPLOAD_FOLDER'], 'bugs'), exist_ok=True)
             file.save(os.path.join(app.config['UPLOAD_FOLDER'], 'bugs', filename))
