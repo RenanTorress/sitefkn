@@ -534,7 +534,7 @@ with app.app_context():
     init_db()  # Ensure tables exist
     conn = get_db()
     
-    # Adicionando colunas que podem faltar no banco antigo
+    # Robust Migrations for Render (SQLite and Gunicorn safe)
     try: conn.execute('ALTER TABLE users ADD COLUMN name TEXT'); conn.commit()
     except: pass
     try: conn.execute('ALTER TABLE users ADD COLUMN role TEXT DEFAULT "admin"'); conn.commit()
@@ -545,10 +545,28 @@ with app.app_context():
     except: pass
     try: conn.execute('ALTER TABLE exam_questions ADD COLUMN resolution_text TEXT'); conn.commit()
     except: pass
-    try: conn.execute('ALTER TABLE exam_questions ALTER COLUMN question_image DROP NOT NULL'); conn.commit()
-    except: pass
     
-    # Forçar dados do DESENVOLVEDOR (Garantir que a senha seja a correta)
+    # Garantir Tabelas de Estatísticas
+    conn.execute('''CREATE TABLE IF NOT EXISTS exam_submissions (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        exam_id INTEGER NOT NULL,
+        student_name TEXT NOT NULL,
+        score INTEGER NOT NULL,
+        total_questions INTEGER NOT NULL,
+        percentage REAL NOT NULL,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    )''')
+    conn.execute('''CREATE TABLE IF NOT EXISTS submission_details (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        submission_id INTEGER NOT NULL,
+        question_id INTEGER NOT NULL,
+        is_correct BOOLEAN NOT NULL,
+        user_choice TEXT,
+        FOREIGN KEY(submission_id) REFERENCES exam_submissions(id) ON DELETE CASCADE
+    )''')
+    conn.commit()
+    
+    # Forçar dados do DESENVOLVEDOR...
     dev_exists = conn.execute('SELECT * FROM users WHERE email = ?', ('desenvolper@fkn.com',)).fetchone()
     if not dev_exists:
         conn.execute('INSERT INTO users (email, password_hash, name, role) VALUES (?, ?, ?, ?)',
@@ -720,6 +738,21 @@ def add_question(exam_id):
     conn.commit()
     conn.close()
     flash('Questão Adicionada!', 'success')
+    return redirect(url_for('admin_exams'))
+
+@app.route('/admin/exams/<int:exam_id>/add_multiple', methods=['POST'])
+def add_multiple_questions(exam_id):
+    if 'user_id' not in session: return redirect(url_for('login'))
+    gabarito_text = request.form.get('gabarito_text', '').upper().replace(',', ' ').replace(';', ' ')
+    options = gabarito_text.split()
+    
+    conn = get_db()
+    for opt in options:
+        if opt in ['A', 'B', 'C', 'D', 'E']:
+            conn.execute('INSERT INTO exam_questions (exam_id, correct_option) VALUES (?, ?)', (exam_id, opt))
+    conn.commit()
+    conn.close()
+    flash(f'{len(options)} questões adicionadas ao gabarito rápido!', 'success')
     return redirect(url_for('admin_exams'))
 
 @app.route('/exam/<int:exam_id>', methods=['GET', 'POST'])
