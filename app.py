@@ -27,14 +27,15 @@ def allowed_file(filename):
     return '.' in filename and filename.rsplit('.', 1)[1].lower() in ALLOWED_EXTENSIONS
 
 def supabase_upload(bucket, path, file_content, content_type):
-    """Faz upload para o Supabase e retorna a URL pública como string.
-    Compatível com supabase-py 2.x onde get_public_url retorna objeto."""
+    """Upload para Supabase Storage. Retorna URL pública como string.
+    Constrói a URL manualmente para evitar bugs do get_public_url() no supabase-py 2.x"""
     try:
         supabase.storage.from_(bucket).upload(
             path, file_content,
-            file_options={"content-type": content_type, "upsert": True}
+            file_options={"content-type": content_type, "x-upsert": "true"}
         )
-    except Exception:
+    except Exception as e1:
+        print(f"[upload] Primeira tentativa falhou: {e1}")
         # Arquivo já existe: remove e re-envia
         try:
             supabase.storage.from_(bucket).remove([path])
@@ -44,12 +45,9 @@ def supabase_upload(bucket, path, file_content, content_type):
             path, file_content,
             file_options={"content-type": content_type}
         )
-    # supabase-py 2.x retorna objeto PublicURLResponse; extrair a string
-    result = supabase.storage.from_(bucket).get_public_url(path)
-    if isinstance(result, str):
-        return result
-    # Tenta atributos do objeto retornado
-    return getattr(result, 'public_url', None) or getattr(result, 'publicUrl', None) or str(result)
+    # Constrói a URL pública manualmente (evita problema do get_public_url() retornar objeto)
+    # Formato Supabase: {URL}/storage/v1/object/public/{bucket}/{path}
+    return f"{SUPABASE_URL}/storage/v1/object/public/{bucket}/{path}"
 
 def format_size(size_in_bytes):
     if size_in_bytes is None: return "0 B"
@@ -485,11 +483,7 @@ def view_forum(forum_id):
                 if supabase:
                     file_content = file.read()
                     content_type = file.content_type or 'application/octet-stream'
-                    supabase.storage.from_('materiais').upload(
-                        f"forum/{filename}", file_content,
-                        file_options={"content-type": content_type, "upsert": "true"}
-                    )
-                    file_path = supabase.storage.from_('materiais').get_public_url(f"forum/{filename}")
+                    file_path = supabase_upload('materiais', f"forum/{filename}", file_content, content_type)
                 else:
                     full_path = os.path.join(app.config['UPLOAD_FOLDER'], 'forum', filename)
                     file.save(full_path)
@@ -540,11 +534,7 @@ def view_topic(topic_id):
                 if supabase:
                     file_content = file.read()
                     content_type = file.content_type or 'application/octet-stream'
-                    supabase.storage.from_('materiais').upload(
-                        f"forum/{filename}", file_content,
-                        file_options={"content-type": content_type, "upsert": "true"}
-                    )
-                    file_path = supabase.storage.from_('materiais').get_public_url(f"forum/{filename}")
+                    file_path = supabase_upload('materiais', f"forum/{filename}", file_content, content_type)
                 else:
                     full_path = os.path.join(app.config['UPLOAD_FOLDER'], 'forum', filename)
                     file.save(full_path)
