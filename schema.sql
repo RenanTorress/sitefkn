@@ -72,7 +72,3 @@ INSERT OR IGNORE INTO settings (key, value) VALUES ('site_name', 'Física com FK
 INSERT OR IGNORE INTO settings (key, value) VALUES ('primary_color', '#3b82f6');
 INSERT OR IGNORE INTO settings (key, value) VALUES ('home_announcement', 'Bem-vindos à nova plataforma de estudos! Fiquem de olho nos novos materiais adicionados e tirem suas dúvidas no fórum.');
 INSERT OR IGNORE INTO settings (key, value) VALUES ('home_about', 'Este espaço é dedicado ao seu aprendizado. Acesse diariamente a área de materiais para fazer o download do currículo da disciplina, listas de exercícios e guias práticos.');
-
--- Initial Users
-INSERT OR IGNORE INTO users (email, password_hash, name, role) VALUES ('desenvolper@fkn.com', 'scrypt:32768:8:1$K5zNXZA6vO1G9E7X$78f5a6b7e5...PlaceholderHash', 'Desenvolvedor Master', 'developer');
-INSERT OR IGNORE INTO users (email, password_hash, name, role) VALUES ('admin@admin.com', 'scrypt:32768:8:1$K5zNXZA6vO1G9E7X$78f5a6b7e5...PlaceholderHash', 'Fundador Oficial', 'master');

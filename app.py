@@ -528,38 +528,35 @@ def download(file_id):
 def download_forum(filename): return send_from_directory(os.path.join(app.config['UPLOAD_FOLDER'], 'forum'), secure_filename(filename), as_attachment=True)
 
 with app.app_context():
-    init_db()  # Ensure schema exists
+    init_db()  # Ensure tables exist
     conn = get_db()
     
-    try:
-        # Check Developer
-        dev = conn.execute('SELECT * FROM users WHERE email = ?', ('desenvolper@fkn.com',)).fetchone()
-        if not dev:
-            conn.execute('INSERT INTO users (email, password_hash, name, role) VALUES (?, ?, ?, ?)',
-                         ('desenvolper@fkn.com', generate_password_hash('Praxair1'), 'Desenvolvedor Master', 'developer'))
+    # Adicionando colunas que podem faltar no banco antigo
+    try: conn.execute('ALTER TABLE users ADD COLUMN name TEXT'); conn.commit()
+    except: pass
+    try: conn.execute('ALTER TABLE users ADD COLUMN role TEXT DEFAULT "admin"'); conn.commit()
+    except: pass
+    
+    # Forçar dados do DESENVOLVEDOR (Garantir que a senha seja a correta)
+    dev_exists = conn.execute('SELECT * FROM users WHERE email = ?', ('desenvolper@fkn.com',)).fetchone()
+    if not dev_exists:
+        conn.execute('INSERT INTO users (email, password_hash, name, role) VALUES (?, ?, ?, ?)',
+                     ('desenvolper@fkn.com', generate_password_hash('Praxair1'), 'Desenvolvedor Master', 'developer'))
+    else:
+        # Se existir mas a senha for placeholder ou errada, a gente reseta aqui para garantir o acesso
+        conn.execute('UPDATE users SET password_hash = ?, role = "developer", name = "Desenvolvedor Master" WHERE email = ?',
+                     (generate_password_hash('Praxair1'), 'desenvolper@fkn.com'))
         
-        # Check Master
-        master = conn.execute('SELECT * FROM users WHERE email = ?', ('admin@admin.com',)).fetchone()
-        if not master:
-            conn.execute('INSERT INTO users (email, password_hash, name, role) VALUES (?, ?, ?, ?)',
-                         ('admin@admin.com', generate_password_hash('123456'), 'Fundador Oficial', 'master'))
-            
-        conn.commit()
-    except sqlite3.OperationalError as e:
-        # If columns missing, fix them
-        try: conn.execute('ALTER TABLE users ADD COLUMN name TEXT'); conn.commit()
-        except: pass
-        try: conn.execute('ALTER TABLE users ADD COLUMN role TEXT DEFAULT "admin"'); conn.commit()
-        except: pass
+    # Garantir MASTER
+    master_exists = conn.execute('SELECT * FROM users WHERE email = ?', ('admin@admin.com',)).fetchone()
+    if not master_exists:
+        conn.execute('INSERT INTO users (email, password_hash, name, role) VALUES (?, ?, ?, ?)',
+                     ('admin@admin.com', generate_password_hash('123456'), 'Fundador Oficial', 'master'))
+    else:
+        # Garantir que admin@admin.com tenha o papel de master (mas não resetar a senha caso ele tenha mudado)
+        conn.execute('UPDATE users SET role = "master" WHERE email = ?', ('admin@admin.com',))
         
-        # Retry insertions
-        if not conn.execute('SELECT id FROM users WHERE email = ?', ('desenvolper@fkn.com',)).fetchone():
-            conn.execute('INSERT INTO users (email, password_hash, name, role) VALUES (?, ?, ?, ?)',
-                         ('desenvolper@fkn.com', generate_password_hash('Praxair1'), 'Desenvolvedor Master', 'developer'))
-        if not conn.execute('SELECT id FROM users WHERE email = ?', ('admin@admin.com',)).fetchone():
-            conn.execute('INSERT INTO users (email, password_hash, name, role) VALUES (?, ?, ?, ?)',
-                         ('admin@admin.com', generate_password_hash('123456'), 'Fundador Oficial', 'master'))
-        conn.commit()
+    conn.commit()
     conn.close()
 
 @app.route('/admin/logs')
