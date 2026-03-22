@@ -40,7 +40,7 @@ def supabase_upload(bucket, path, file_content, content_type):
         try:
             supabase.storage.from_(bucket).upload(
                 path, tmp_path,
-                file_options={"content-type": content_type, "upsert": "true"}
+                file_options={"content-type": content_type, "upsert": True}
             )
         except Exception as e1:
             print(f"[upload] Primeira tentativa falhou (upsert): {e1}")
