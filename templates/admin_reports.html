@@ -22,6 +22,9 @@
                         <button type="submit" class="btn" style="padding: 4px 10px; font-size: 0.7rem; background: #10b981; border: none; font-weight: bold;">MARCAR COMO RESOLVIDO</button>
                     </form>
                     {% endif %}
+                    <form action="{{ url_for('delete_bug_report', report_id=report.id) }}" method="POST" style="margin: 0;" onsubmit="return confirm('Deseja realmente apagar este ticket permanentemente?');">
+                        <button type="submit" class="btn" style="padding: 4px 10px; font-size: 0.7rem; background: #ef4444; border: none; font-weight: bold;">🗑️ APAGAR</button>
+                    </form>
                 </div>
                 <span style="color: #64748b;">{{ report.created_at }}</span>
             </div>

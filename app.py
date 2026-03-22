@@ -775,10 +775,34 @@ def view_reports():
 def resolve_bug(report_id):
     if 'user_id' not in session: return redirect(url_for('login'))
     conn = get_db()
-    conn.execute('UPDATE bug_reports SET is_resolved = 1 WHERE id = ?', (report_id,))
+    conn.execute('UPDATE bug_reports SET is_resolved = TRUE WHERE id = ?', (report_id,))
     conn.commit()
     conn.close()
     flash('Erro marcado como resolvido!', 'success')
+    return redirect(url_for('view_reports'))
+
+@app.route('/admin/reports/<int:report_id>/delete', methods=['POST'])
+def delete_bug_report(report_id):
+    if 'user_id' not in session: return redirect(url_for('login'))
+    conn = get_db()
+    
+    # Try to delete file from Supabase if exists
+    report = conn.execute('SELECT attachment_path FROM bug_reports WHERE id = ?', (report_id,)).fetchone()
+    if report and report['attachment_path']:
+        try:
+            if supabase and report['attachment_path'].startswith('http'):
+                name = report['attachment_path'].split('/')[-1]
+                supabase.storage.from_('materiais').remove([f"bugs/{name}"])
+            else:
+                filepath = os.path.join(app.config['UPLOAD_FOLDER'], 'bugs', report['attachment_path'])
+                if os.path.exists(filepath): os.remove(filepath)
+        except Exception:
+            pass
+            
+    conn.execute('DELETE FROM bug_reports WHERE id = ?', (report_id,))
+    conn.commit()
+    conn.close()
+    flash('Ticket apagado com sucesso!', 'success')
     return redirect(url_for('view_reports'))
 
 @app.route('/admin/dev_panel', methods=['GET', 'POST'])
