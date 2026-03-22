@@ -1,7 +1,6 @@
 import sqlite3
 import os
-import psycopg2
-from psycopg2.extras import RealDictCursor
+import pg8000.dbapi
 from urllib.parse import urlparse
 
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
@@ -9,22 +8,25 @@ DATABASE = os.path.join(BASE_DIR, 'database.db')
 DATABASE_URL = os.environ.get('DATABASE_URL')
 
 if DATABASE_URL:
-    import psycopg2
-    from psycopg2 import OperationalError, IntegrityError
-    from psycopg2.extras import RealDictCursor
+    from pg8000.dbapi import OperationalError, IntegrityError
 else:
-    import sqlite3
     from sqlite3 import OperationalError, IntegrityError
 
 def get_db():
     if DATABASE_URL:
-        # PostgreSQL (Supabase)
-        conn = psycopg2.connect(DATABASE_URL, cursor_factory=RealDictCursor)
-        # Patch connection to behave like SQLite's connection for simple use cases
+        # PostgreSQL (Supabase) via pg8000 (Pure Python)
+        url = urlparse(DATABASE_URL)
+        conn = pg8000.dbapi.connect(
+            user=url.username,
+            password=url.password,
+            host=url.hostname,
+            port=url.port or 5432,
+            database=url.path[1:]
+        )
+        
+        # Patch connection to behave like SQLite's connection and return dict-like rows
         def execute_wrapper(query, params=None):
-            # Convert SQLite placeholders (?) to PostgreSQL (%s)
             query = query.replace('?', '%s')
-            # Convert INSERT OR IGNORE to PostgreSQL ON CONFLICT DO NOTHING
             if 'INSERT OR IGNORE' in query.upper():
                 query = query.upper().replace('INSERT OR IGNORE', 'INSERT')
                 if 'ON CONFLICT' not in query:
@@ -33,6 +35,15 @@ def get_db():
             cur = conn.cursor()
             try:
                 cur.execute(query, params or ())
+                # Adicionar suporte a acesso por nome de coluna (dict-like)
+                if cur.description:
+                    columns = [col[0] for col in cur.description]
+                    # Criar um método fetchall customizado
+                    original_fetchall = cur.fetchall
+                    cur.fetchall = lambda: [dict(zip(columns, row)) for row in original_fetchall()]
+                    # Criar um método fetchone customizado
+                    original_fetchone = cur.fetchone
+                    cur.fetchone = lambda: dict(zip(columns, row)) if (row := original_fetchone()) else None
                 return cur
             except Exception as e:
                 conn.rollback()
@@ -52,9 +63,12 @@ def init_db():
         sql = f.read()
         if DATABASE_URL:
             # PostgreSQL não aceita executescript diretamente do sqlite3
-            with conn.cursor() as cur:
+            cur = conn.cursor()
+            try:
                 cur.execute(sql)
-            conn.commit()
+                conn.commit()
+            finally:
+                cur.close()
         else:
             conn.executescript(sql)
             conn.commit()
