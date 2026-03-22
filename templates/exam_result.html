@@ -1,0 +1,62 @@
+{% extends 'base.html' %}
+{% block content %}
+<div class="header-title" style="text-align: left; margin-bottom: 3rem; display: flex; justify-content: space-between; align-items: center;">
+    <div>
+        <h1 style="color: #10b981;">📊 Performance Técnica: {{ exam.title }}</h1>
+        <p>Confira seu aproveitamento e estude as resoluções abaixo.</p>
+    </div>
+    <a href="{{ url_for('materiais') }}" class="btn">Sair do Exame</a>
+</div>
+
+<div class="card" style="text-align: center; margin-bottom: 4rem; border: 2px solid #10b981; padding: 2.5rem; background: rgba(16, 185, 129, 0.05);">
+    <div style="font-size: 1.2rem; color: #94a3b8; text-transform: uppercase; letter-spacing: 2px; margin-bottom: 0.5rem;">Resultado Final</div>
+    <h2 style="font-size: 4rem; color: white; margin-bottom: 0.5rem;">{{ correct_count }} / {{ total }}</h2>
+    <div style="font-size: 1.5rem; font-weight: bold; color: #10b981;">{{ (correct_count / total * 100)|round(0)|int }}% de Acertos</div>
+    
+    <div style="width: 100%; height: 8px; background: rgba(255,255,255,0.05); border-radius: 4px; margin-top: 2rem; overflow: hidden;">
+        <div style="width: {{ (correct_count / total * 100)|int }}%; height: 100%; background: #10b981; box-shadow: 0 0 15px rgba(16, 185, 129, 0.6); transition: width 1s ease;"></div>
+    </div>
+</div>
+
+{% for r in results %}
+<div class="card" style="margin-bottom: 3rem; border-left: 10px solid {% if r.is_correct %}#10b981{% else %}#ef4444{% endif %}; position: relative; background: rgba(0,0,0,0.3);">
+    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 2rem; border-bottom: 1px solid var(--border); padding-bottom: 1rem;">
+        <div style="font-weight: bold; font-size: 1.3rem; color: white;">QUESTÃO {{ loop.index }}</div>
+        <div style="padding: 0.5rem 1.5rem; border-radius: 20px; font-weight: bold; background: {% if r.is_correct %}rgba(16, 185, 129, 0.2); color: #10b981;{% else %}rgba(239, 68, 68, 0.2); color: #ef4444;{% endif %}">
+            {% if r.is_correct %}✓ Acertou{% else %}✗ Errou{% endif %}
+        </div>
+    </div>
+    
+    <div style="text-align: center; margin-bottom: 2rem; padding: 1.5rem; background: rgba(255,255,255,0.02); border-radius: 12px; border: 1px solid rgba(255,255,255,0.05);">
+        <img src="{{ url_for('static', filename='uploads/exams/' + r.question_image) }}" style="max-width: 100%; border-radius: 8px; filter: drop-shadow(0 4px 15px rgba(0,0,0,0.5));">
+    </div>
+    
+    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; margin-bottom: 2rem;">
+        <div style="padding: 1.5rem; background: rgba(0,0,0,0.4); border-radius: 12px; text-align: center; border: 1px solid var(--border);">
+            <div style="font-size: 0.8rem; color: #94a3b8; text-transform: uppercase;">Sua Escolha</div>
+            <div style="font-size: 2rem; font-weight: bold; color: {% if r.is_correct %}#10b981{% else %}#ef4444{% endif %};">{{ r.user_ans or '-' }}</div>
+        </div>
+        <div style="padding: 1.5rem; background: rgba(0,0,0,0.4); border-radius: 12px; text-align: center; border: 1px solid #10b981;">
+            <div style="font-size: 0.8rem; color: #94a3b8; text-transform: uppercase;">Gabarito Correto</div>
+            <div style="font-size: 2rem; font-weight: bold; color: #10b981;">{{ r.correct_ans }}</div>
+        </div>
+    </div>
+
+    {% if r.resolution_image %}
+    <div style="margin-top: 2rem; padding: 2rem; background: rgba(234, 179, 8, 0.03); border-radius: 12px; border: 1px dashed #eab308;">
+        <div style="display: flex; align-items: center; gap: 0.8rem; margin-bottom: 1.5rem; color: #eab308; font-weight: bold;">
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2L2 7l10 5l10 -5l-10 -5zM2 17l10 5l10 -5M2 12l10 5l10 -5"></path></svg>
+            Resolução Técnicamente Comentada
+        </div>
+        <div style="text-align: center;">
+            <img src="{{ url_for('static', filename='uploads/exams/' + r.resolution_image) }}" style="max-width: 100%; border-radius: 8px; filter: drop-shadow(0 0 20px rgba(234, 179, 8, 0.1));">
+        </div>
+    </div>
+    {% endif %}
+</div>
+{% endfor %}
+
+<div style="text-align: center; margin-top: 5rem; margin-bottom: 5rem;">
+    <a href="{{ url_for('materiais') }}" class="btn" style="width: 100%; height: 75px; font-size: 1.4rem; padding: 1.5rem; background: var(--primary); font-weight: bold;">Voltar para Materiais de Estudo</a>
+</div>
+{% endblock %}

@@ -236,8 +236,8 @@
                 <div class="form-group" style="margin-bottom: 0.8rem;">
                     <label style="font-size: 0.85rem; color: #94a3b8;">Nível de Acesso (Cargo):</label>
                     <select name="role" class="form-control" style="background: rgba(0,0,0,0.3);">
-                        <option value="admin">Administrador Auxiliar</option>
-                        <option value="master">Admin Master (Controle Total)</option>
+                        <option value="admin">Monitor (Acesso Limitado)</option>
+                        <option value="master">Professor (Controle do Site)</option>
                     </select>
                 </div>
                 
@@ -260,9 +260,9 @@
                     {% if user.role == 'developer' %}
                         <span class="badge" style="background: #eab308; color: black; font-size: 0.7rem; padding: 4px 8px; font-weight: bold;">🛠️ DEV</span>
                     {% elif user.role == 'master' %}
-                        <span class="badge" style="background: var(--primary); font-size: 0.7rem; padding: 4px 8px;">👑 MASTER</span>
+                        <span class="badge" style="background: var(--primary); font-size: 0.7rem; padding: 4px 8px;">👑 Professor</span>
                     {% else %}
-                        <span class="badge" style="background: #64748b; font-size: 0.7rem; padding: 4px 8px;">👤 ADMIN</span>
+                        <span class="badge" style="background: #10b981; font-size: 0.7rem; padding: 4px 8px;">👤 Monitor</span>
                     {% endif %}
                     
                     {% set can_del = false %}
@@ -280,7 +280,31 @@
                 </div>
             </div>
             {% endfor %}
-            <p style="font-size: 0.8rem; color: #64748b; margin-top: 1rem; text-align: center;">Hierarquia: Desenvolvedor > Master > Admin.</p>
+            <p style="font-size: 0.8rem; color: #64748b; margin-top: 1rem; text-align: center;">Hierarquia: Desenvolvedor > Professor > Monitores.</p>
+        </div>
+        
+        <!-- LINKS DE NOVAS SEÇÕES (Fase 6) -->
+        <div class="card" style="border-top: 4px solid #ef4444;">
+            <h3 style="color: white; margin-bottom: 1.5rem;">🛠️ Central Técnica</h3>
+            <div style="display: grid; gap: 1rem;">
+                <a href="{{ url_for('view_reports') }}" class="btn" style="background: rgba(239, 68, 68, 0.1); color: #ef4444; border: 1px solid #ef4444; text-align: center; text-decoration: none;">
+                    🚨 Ver Denúncias de Bug
+                </a>
+                <a href="{{ url_for('admin_faqs') }}" class="btn" style="background: rgba(255,255,255,0.05); text-align: center; text-decoration: none;">
+                    ❓ Gerenciar Perguntas (FAQ)
+                </a>
+                <a href="{{ url_for('admin_exams') }}" class="btn" style="background: rgba(234, 179, 8, 0.05); color: #eab308; border: 1px solid #eab308; text-align: center; text-decoration: none; font-weight: bold;">
+                    📝 Criar Modo Prova / Gabaritos
+                </a>
+                <a href="{{ url_for('exam_stats') }}" class="btn" style="background: #eab308; color: black; text-align: center; text-decoration: none; font-weight: bold;">
+                    📊 Relatórios e Médias de Notas
+                </a>
+                {% if session.get('role') == 'developer' %}
+                <a href="{{ url_for('dev_panel') }}" class="btn" style="background: #000; border: 1px solid #eab308; color: #eab308; text-align: center; text-decoration: none; font-weight: bold;">
+                    ⚙️ PAINEL DO DESENVOLVEDOR
+                </a>
+                {% endif %}
+            </div>
         </div>
     </div>
 </div>

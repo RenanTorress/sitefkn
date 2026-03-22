@@ -1,0 +1,84 @@
+{% extends 'base.html' %}
+{% block content %}
+<div class="header-title" style="text-align: left; margin-bottom: 3rem; display: flex; justify-content: space-between; align-items: flex-end;">
+    <div>
+        <h1 style="color: #eab308;">📝 Simulado Técnico: {{ exam.title }}</h1>
+        <p>Analise a imagem da questão e marque sua decisão final.</p>
+    </div>
+    <div style="text-align: right;">
+        <span id="countdown" style="font-size: 1.5rem; font-weight: bold; color: #ef4444; background: rgba(239, 68, 68, 0.1); padding: 0.5rem 1.5rem; border-radius: 8px; border: 1px solid #ef4444;">--:--:--</span>
+    </div>
+</div>
+
+<form method="POST" id="examForm">
+    <div style="background: rgba(234, 179, 8, 0.1); padding: 1.5rem; border-radius: 12px; margin-bottom: 2rem; border: 1px solid #eab308;">
+        <label style="color: #eab308; font-weight: bold; margin-bottom: 0.5rem; display: block;">Identifique-se para o Professor:</label>
+        <input type="text" name="student_name" class="form-control" placeholder="Seu Nome Completo" required style="font-size: 1.2rem; background: rgba(0,0,0,0.5);">
+    </div>
+    {% for q in questions %}
+    <div class="card" style="margin-bottom: 3rem; border: 1px solid var(--border); background: rgba(255,255,255,0.02); position: relative; overflow: hidden;">
+        <div style="position: absolute; top:0; left:0; padding: 0.5rem 1.5rem; background: var(--primary); color: white; font-weight: bold; font-size: 0.9rem; border-bottom-right-radius: 12px; box-shadow: 0 4px 10px rgba(0,0,0,0.3);">
+            ITEM {{ loop.index }}
+        </div>
+        
+        <div style="margin-top: 3rem; text-align: center;">
+            <img src="{{ url_for('static', filename='uploads/exams/' + q.question_image) }}" style="max-width: 100%; border-radius: 8px; box-shadow: 0 4px 20px rgba(0,0,0,0.5); border: 1px solid rgba(255,255,255,0.1);">
+        </div>
+        
+        <div style="margin-top: 2rem; display: flex; justify-content: center; gap: 1rem; flex-wrap: wrap; padding: 1.5rem; background: rgba(0,0,0,0.3); border-radius: 12px;">
+            {% for op in ['A', 'B', 'C', 'D', 'E'] %}
+            <label class="radio-option">
+                <input type="radio" name="q_{{ q.id }}" value="{{ op }}" required>
+                <span>{{ op }}</span>
+            </label>
+            {% endfor %}
+        </div>
+    </div>
+    {% endfor %}
+    
+    <div style="text-align: center; margin-top: 5rem; margin-bottom: 5rem;">
+        <button type="submit" class="btn" style="width: 100%; height: 90px; font-size: 1.8rem; font-weight: bold; background: #10b981; color: white; box-shadow: 0 10px 30px rgba(16, 185, 129, 0.4); border:none; cursor: pointer; transition: transform 0.2s;">ENTREGAR GABARITO FINAL 🚀</button>
+    </div>
+</form>
+
+<style>
+    .radio-option {
+        display: flex; align-items: center; justify-content: center;
+        width: 70px; height: 70px; border-radius: 50%;
+        background: rgba(255,255,255,0.05); border: 2px solid var(--border);
+        cursor: pointer; transition: all 0.2s;
+    }
+    .radio-option input { display: none; }
+    .radio-option span { font-size: 1.5rem; font-weight: bold; color: #94a3b8; }
+    .radio-option:hover { background: rgba(255,255,255,0.1); border-color: var(--primary); transform: scale(1.1); }
+    .radio-option:has(input:checked) { background: var(--primary); border-color: white; transform: scale(1.15); box-shadow: 0 0 15px rgba(59, 130, 246, 0.5); }
+    .radio-option:has(input:checked) span { color: white; }
+</style>
+
+<script>
+    {% if exam.end_at %}
+    const endTime = new Date("{{ exam.end_at }}").getTime();
+    const timer = setInterval(() => {
+        const now = new Date().getTime();
+        const distance = endTime - now;
+        
+        if (distance < 0) {
+            clearInterval(timer);
+            document.getElementById("countdown").innerHTML = "TEMPO EXAURIDO";
+            document.getElementById("examForm").submit(); // Auto submit on timeout
+            return;
+        }
+        
+        const hours = Math.floor((distance % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
+        const minutes = Math.floor((distance % (1000 * 60 * 60)) / (1000 * 60));
+        const seconds = Math.floor((distance % (1000 * 60)) / 1000);
+        
+        document.getElementById("countdown").innerHTML = hours.toString().padStart(2, '0') + ":" + minutes.toString().padStart(2, '0') + ":" + seconds.toString().padStart(2, '0');
+    }, 1000);
+    {% else %}
+    document.getElementById("countdown").innerHTML = "PROVA ABERTA";
+    document.getElementById("countdown").style.color = "#10b981";
+    document.getElementById("countdown").style.borderColor = "#10b981";
+    {% endif %}
+</script>
+{% endblock %}

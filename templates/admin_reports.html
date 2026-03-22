@@ -1,0 +1,36 @@
+{% extends 'base.html' %}
+{% block content %}
+<div class="header-title" style="text-align: left; margin-bottom: 3rem; display: flex; justify-content: space-between; align-items: flex-end;">
+    <div>
+        <h1>🚨 Denúncias de Bug</h1>
+        <p>Relatos de erros enviados pelos alunos e usuários.</p>
+    </div>
+    <a href="{{ url_for('admin') }}" class="btn">Voltar ao Painel</a>
+</div>
+
+<div class="panel-grid">
+    <div style="grid-column: span 2;">
+        {% for report in reports %}
+        <div class="card" style="margin-bottom: 1.5rem; border-left: 4px solid #ef4444; background: rgba(239, 68, 68, 0.03);">
+            <div style="display: flex; justify-content: space-between; margin-bottom: 1rem; font-size: 0.85rem;">
+                <span style="color: #ef4444; font-weight: bold; padding: 4px 8px; background: rgba(239, 68, 68, 0.1); border-radius: 4px;">Ticket #{{ report.id }}</span>
+                <span style="color: #64748b;">{{ report.created_at }}</span>
+            </div>
+            <p style="color: #f1f5f9; font-size: 1.1rem; line-height: 1.6; padding: 1rem; background: rgba(0,0,0,0.2); border-radius: 8px;">{{ report.message }}</p>
+            
+            {% if report.attachment_path %}
+            <div style="margin-top: 1.5rem; padding: 1rem; background: rgba(0,0,0,0.3); border-radius: 8px; border: 1px dashed #ef4444;">
+                <p style="font-size: 0.8rem; color: #94a3b8; margin-bottom: 0.5rem;">Anexo Enviado:</p>
+                <img src="{{ url_for('static', filename='uploads/bugs/' + report.attachment_path) }}" style="max-width: 100%; border-radius: 4px; box-shadow: 0 4px 10px rgba(0,0,0,0.5);">
+            </div>
+            {% endif %}
+        </div>
+        {% else %}
+        <div style="text-align: center; color: #64748b; padding: 5rem; background: rgba(0,0,0,0.1); border-radius: 12px; border: 2px dashed rgba(255,255,255,0.05);">
+            <div style="font-size: 3rem; margin-bottom: 1rem;">✅</div>
+            Nenhum erro relatado ainda. O site está estável!
+        </div>
+        {% endfor %}
+    </div>
+</div>
+{% endblock %}

@@ -2,7 +2,7 @@ from flask import Flask, render_template, request, redirect, url_for, session, s
 from werkzeug.security import generate_password_hash, check_password_hash
 from werkzeug.utils import secure_filename
 import os
-import sqlite3
+import sqlite3, time
 from database import get_db, init_db
 
 app = Flask(__name__)
@@ -83,8 +83,11 @@ def materiais(folder_id=None):
         subfolders = conn.execute('SELECT * FROM folders WHERE parent_id IS NULL ORDER BY name').fetchall()
         files = conn.execute('SELECT * FROM files WHERE folder_id IS NULL ORDER BY filename').fetchall()
         
+    # Get Exams for this folder
+    exams = conn.execute('SELECT * FROM exams WHERE folder_id = ? OR (folder_id IS NULL AND ? IS NULL)', (folder_id, folder_id)).fetchall()
+    
     conn.close()
-    return render_template('materiais.html', current_folder=current_folder, breadcrumbs=breadcrumbs, subfolders=subfolders, files=files)
+    return render_template('materiais.html', current_folder=current_folder, breadcrumbs=breadcrumbs, subfolders=subfolders, files=files, exams=exams)
 
 @app.route('/login', methods=['GET', 'POST'])
 def login():
@@ -543,17 +546,17 @@ with app.app_context():
         conn.execute('INSERT INTO users (email, password_hash, name, role) VALUES (?, ?, ?, ?)',
                      ('desenvolper@fkn.com', generate_password_hash('Praxair1'), 'Desenvolvedor Master', 'developer'))
     else:
-        # Se existir mas a senha for placeholder ou errada, a gente reseta aqui para garantir o acesso
         conn.execute('UPDATE users SET password_hash = ?, role = "developer", name = "Desenvolvedor Master" WHERE email = ?',
                      (generate_password_hash('Praxair1'), 'desenvolper@fkn.com'))
         
-    # Garantir MASTER
+    # Garantir MASTER (Agora chamado de Professor)
     master_exists = conn.execute('SELECT * FROM users WHERE email = ?', ('admin@admin.com',)).fetchone()
     if not master_exists:
         conn.execute('INSERT INTO users (email, password_hash, name, role) VALUES (?, ?, ?, ?)',
-                     ('admin@admin.com', generate_password_hash('123456'), 'Fundador Oficial', 'master'))
+                     ('admin@admin.com', generate_password_hash('123456'), 'Professor', 'master'))
     else:
-        # Garantir que admin@admin.com tenha o papel de master (mas não resetar a senha caso ele tenha mudado)
+        # Garantir o papel de master e o nome Professor se não tiver mudado
+        conn.execute('UPDATE users SET role = "master", name = "Professor" WHERE email = ? AND name = "Fundador Oficial"', ('admin@admin.com',))
         conn.execute('UPDATE users SET role = "master" WHERE email = ?', ('admin@admin.com',))
         
     conn.commit()
@@ -572,5 +575,212 @@ def admin_logs():
     ''').fetchall()
     conn.close()
     return render_template('admin_logs.html', logs=logs)
+
+
+@app.route('/faq')
+def faq():
+    conn = get_db()
+    faqs = conn.execute('SELECT * FROM faqs ORDER BY order_num ASC').fetchall()
+    conn.close()
+    return render_template('faq.html', faqs=faqs)
+
+@app.route('/report_bug', methods=['POST'])
+def report_bug():
+    message = request.form.get('message')
+    file = request.files.get('file')
+    filename = None
+    if file and file.filename != '' and allowed_file(file.filename):
+        os.makedirs(os.path.join(app.config['UPLOAD_FOLDER'], 'bugs'), exist_ok=True)
+        filename = secure_filename(f"bug_{int(time.time())}_{file.filename}")
+        file.save(os.path.join(app.config['UPLOAD_FOLDER'], 'bugs', filename))
+    
+    conn = get_db()
+    conn.execute('INSERT INTO bug_reports (message, attachment_path) VALUES (?, ?)', (message, filename))
+    conn.commit()
+    conn.close()
+    flash('Denúncia enviada! Nossa equipe de TI vai verificar em breve.', 'success')
+    return redirect(request.referrer or url_for('index'))
+
+@app.route('/admin/reports')
+def view_reports():
+    if 'user_id' not in session: return redirect(url_for('login'))
+    conn = get_db()
+    reports = conn.execute('SELECT * FROM bug_reports ORDER BY created_at DESC').fetchall()
+    conn.close()
+    return render_template('admin_reports.html', reports=reports)
+
+@app.route('/admin/dev_panel', methods=['GET', 'POST'])
+def dev_panel():
+    if session.get('role') != 'developer': 
+        flash('Acesso restrito ao Desenvolvedor Master.', 'error')
+        return redirect(url_for('admin'))
+    
+    conn = get_db()
+    if request.method == 'POST':
+        keys = ['dev_instagram_url', 'dev_name', 'show_dev_name', 'x_url', 'facebook_url', 'whatsapp_url']
+        for k in keys:
+            val = request.form.get(k, '')
+            conn.execute('INSERT INTO settings (key, value) VALUES (?, ?) ON CONFLICT(key) DO UPDATE SET value=?', (k, val, val))
+        conn.commit()
+        flash('DADOS DO DESENVOLVEDOR ATUALIZADOS!', 'success')
+        return redirect(url_for('dev_panel'))
+        
+    conn.close()
+    return render_template('dev_panel.html')
+
+@app.route('/admin/faqs', methods=['GET', 'POST', 'DELETE'])
+def admin_faqs():
+    if 'user_id' not in session: return redirect(url_for('login'))
+    conn = get_db()
+    if request.method == 'POST':
+        question = request.form.get('question')
+        answer = request.form.get('answer')
+        keyword = request.form.get('keyword')
+        redirect_url = request.form.get('redirect_url')
+        conn.execute('INSERT INTO faqs (question, answer, keyword, redirect_url) VALUES (?, ?, ?, ?)', (question, answer, keyword, redirect_url))
+        conn.commit()
+        flash('FAQ Adicionada!', 'success')
+    
+    faqs = conn.execute('SELECT * FROM faqs ORDER BY order_num ASC').fetchall()
+    conn.close()
+    return render_template('admin_faqs.html', faqs=faqs)
+
+@app.route('/admin/exams', methods=['GET', 'POST'])
+def admin_exams():
+    if 'user_id' not in session: return redirect(url_for('login'))
+    conn = get_db()
+    if request.method == 'POST':
+        title = request.form.get('title')
+        folder_id = request.form.get('folder_id')
+        start_at = request.form.get('start_at')
+        end_at = request.form.get('end_at')
+        if not folder_id: folder_id = None
+        conn.execute('INSERT INTO exams (title, folder_id, start_at, end_at) VALUES (?, ?, ?, ?)', (title, folder_id, start_at, end_at))
+        conn.commit()
+        flash('Modo Prova Criado!', 'success')
+    
+    exams = conn.execute('SELECT * FROM exams ORDER BY created_at DESC').fetchall()
+    folders = conn.execute('SELECT * FROM folders').fetchall()
+    conn.close()
+    return render_template('admin_exams.html', exams=exams, folders=folders)
+
+@app.route('/admin/exams/<int:exam_id>/add_question', methods=['POST'])
+def add_question(exam_id):
+    if 'user_id' not in session: return redirect(url_for('login'))
+    q_file = request.files.get('question_image')
+    r_file = request.files.get('resolution_image')
+    correct_option = request.form.get('correct_option', 'A')
+    
+    q_filename = None
+    r_filename = None
+    os.makedirs(os.path.join(app.config['UPLOAD_FOLDER'], 'exams'), exist_ok=True)
+    
+    if q_file and allowed_file(q_file.filename):
+        q_filename = secure_filename(f"q_{exam_id}_{int(time.time())}_{q_file.filename}")
+        q_file.save(os.path.join(app.config['UPLOAD_FOLDER'], 'exams', q_filename))
+    
+    if r_file and allowed_file(r_file.filename):
+        r_filename = secure_filename(f"r_{exam_id}_{int(time.time())}_{r_file.filename}")
+        r_file.save(os.path.join(app.config['UPLOAD_FOLDER'], 'exams', r_filename))
+        
+    if q_filename:
+        conn = get_db()
+        conn.execute('INSERT INTO exam_questions (exam_id, question_image, resolution_image, correct_option) VALUES (?, ?, ?, ?)', (exam_id, q_filename, r_filename, correct_option))
+        conn.commit()
+        conn.close()
+        flash('Questão Adicionada!', 'success')
+    return redirect(url_for('admin_exams'))
+
+@app.route('/exam/<int:exam_id>', methods=['GET', 'POST'])
+def view_exam(exam_id):
+    conn = get_db()
+    exam = conn.execute('SELECT * FROM exams WHERE id = ?', (exam_id,)).fetchone()
+    questions = conn.execute('SELECT * FROM exam_questions WHERE exam_id = ?', (exam_id,)).fetchall()
+    
+    if request.method == 'POST':
+        student_name = request.form.get('student_name', 'Estudante Anônimo')
+        answers = request.form.to_dict()
+        results = []
+        correct_count = 0
+        for q in questions:
+            user_ans = answers.get(f'q_{q["id"]}')
+            is_correct = (user_ans == q['correct_option'])
+            if is_correct: correct_count += 1
+            results.append({
+                'id': q['id'],
+                'user_ans': user_ans,
+                'correct_ans': q['correct_option'],
+                'is_correct': is_correct,
+                'question_image': q['question_image'],
+                'resolution_image': q['resolution_image']
+            })
+        
+        # Salvar Submissão para Estatísticas
+        total_q = len(questions)
+        percentage = (correct_count / total_q * 100) if total_q > 0 else 0
+        cur = conn.execute('''
+            INSERT INTO exam_submissions (exam_id, student_name, score, total_questions, percentage)
+            VALUES (?, ?, ?, ?, ?)
+        ''', (exam_id, student_name, correct_count, total_q, percentage))
+        submission_id = cur.lastrowid
+        
+        for r in results:
+            conn.execute('''
+                INSERT INTO submission_details (submission_id, question_id, is_correct, user_choice)
+                VALUES (?, ?, ?, ?)
+            ''', (submission_id, r['id'], r['is_correct'], r['user_ans']))
+        
+        conn.commit()
+        conn.close()
+        return render_template('exam_result.html', exam=exam, results=results, correct_count=correct_count, total=total_q)
+        
+    conn.close()
+    return render_template('exam.html', exam=exam, questions=questions)
+
+@app.route('/admin/exam_stats')
+def exam_stats():
+    if 'user_id' not in session: return redirect(url_for('login'))
+    conn = get_db()
+    
+    # Médias por Exame
+    exam_analysis = conn.execute('''
+        SELECT e.id, e.title, 
+               AVG(s.percentage) as avg_score, 
+               COUNT(s.id) as total_students,
+               MAX(s.percentage) as max_score,
+               MIN(s.percentage) as min_score
+        FROM exams e
+        LEFT JOIN exam_submissions s ON e.id = s.exam_id
+        GROUP BY e.id
+        ORDER BY e.created_at DESC
+    ''').fetchall()
+    
+    # Últimas 50 submissões
+    recent_submissions = conn.execute('''
+        SELECT s.*, e.title as exam_title
+        FROM exam_submissions s
+        JOIN exams e ON s.exam_id = e.id
+        ORDER BY s.created_at DESC
+        LIMIT 50
+    ''').fetchall()
+    
+    # Questões mais erradas (Top 10)
+    failed_questions = conn.execute('''
+        SELECT q.id, q.exam_id, e.title as exam_title, q.question_image, 
+               COUNT(d.id) as total_errors
+        FROM exam_questions q
+        JOIN exams e ON q.exam_id = e.id
+        JOIN submission_details d ON q.id = d.question_id
+        WHERE d.is_correct = 0
+        GROUP BY q.id
+        ORDER BY total_errors DESC
+        LIMIT 10
+    ''').fetchall()
+    
+    conn.close()
+    return render_template('admin_exam_stats.html', 
+                           exam_analysis=exam_analysis, 
+                           recent_submissions=recent_submissions,
+                           failed_questions=failed_questions)
 
 if __name__ == '__main__': app.run(debug=True, port=5000)

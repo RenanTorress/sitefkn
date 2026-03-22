@@ -1,0 +1,28 @@
+{% extends 'base.html' %}
+{% block content %}
+<div class="header-title" style="text-align: left; margin-bottom: 3rem;">
+    <h1>Dúvidas e Perguntas Frequentes (FAQ)</h1>
+    <p>Encontre respostas rápidas para as principais dúvidas da plataforma.</p>
+</div>
+
+<div class="panel-grid">
+    <div style="grid-column: span 2;">
+        {% for faq in faqs %}
+        <div class="card" style="margin-bottom: 2rem; border-left: 4px solid var(--primary); transition: transform 0.2s;" onmouseover="this.style.transform='translateX(10px)'" onmouseout="this.style.transform='translateX(0)'">
+            <h3 style="color: white; margin-bottom: 1rem;">{{ loop.index }}. {{ faq.question }}</h3>
+            <p style="color: #cbd5e1; line-height: 1.6; font-size: 1.15rem;">
+                {% if faq.keyword and faq.redirect_url %}
+                    {{ faq.answer.replace(faq.keyword, '<a href="' + faq.redirect_url + '" style="color: #eab308; font-weight: bold; text-decoration: underline; background: rgba(234, 179, 8, 0.1); padding: 2px 6px; border-radius: 4px;">' + faq.keyword + '</a>') | safe }}
+                {% else %}
+                    {{ faq.answer }}
+                {% endif %}
+            </p>
+        </div>
+        {% endfor %}
+    </div>
+</div>
+
+<div style="text-align: center; margin-top: 4rem;">
+    <p style="color: #64748b;">Ainda com dúvidas? <a href="{{ url_for('forums') }}" style="color: var(--primary);">Abra um tópico no Fórum</a></p>
+</div>
+{% endblock %}

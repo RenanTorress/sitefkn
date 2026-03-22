@@ -1,0 +1,82 @@
+{% extends 'base.html' %}
+{% block content %}
+<div class="header-title" style="text-align: left; margin-bottom: 3rem; display: flex; justify-content: space-between; align-items: flex-end;">
+    <div>
+        <h1>📊 Estatísticas de Performance</h1>
+        <p>Métricas detalhadas sobre o aproveitamento dos alunos nos simulados.</p>
+    </div>
+    <a href="{{ url_for('admin') }}" class="btn">Voltar ao Painel</a>
+</div>
+
+<!-- DASHBOARD DE MÉDIAS -->
+<h2 style="margin-bottom: 2rem; color: var(--primary);">📈 Médias Gerais por Simulado</h2>
+<div class="panel-grid" style="margin-bottom: 4rem;">
+    {% for exam in exam_analysis %}
+    <div class="card" style="border-top: 5px solid var(--primary); text-align: center; background: rgba(59, 130, 246, 0.05);">
+        <h4 style="color: #94a3b8; font-size: 0.8rem; text-transform: uppercase; margin-bottom: 1rem;">{{ exam.title }}</h4>
+        <div style="font-size: 2.8rem; color: white; margin-bottom: 0.5rem; font-weight: 800;">{{ (exam.avg_score or 0)|round(1) }}%</div>
+        <p style="font-size: 0.9rem; color: #64748b;">Média da Turma ({{ exam.total_students }} entregas)</p>
+        
+        <div style="display: flex; justify-content: space-around; margin-top: 2rem; border-top: 1px solid var(--border); padding-top: 1.5rem;">
+            <div>
+                <div style="color: #10b981; font-weight: bold; font-size: 1.2rem;">{{ (exam.max_score or 0)|int }}%</div>
+                <div style="font-size: 0.7rem; color: #64748b; letter-spacing: 1px;">MAIOR NOTA</div>
+            </div>
+            <div style="width: 1px; background: var(--border); height: 30px;"></div>
+            <div>
+                <div style="color: #ef4444; font-weight: bold; font-size: 1.2rem;">{{ (exam.min_score or 0)|int }}%</div>
+                <div style="font-size: 0.7rem; color: #64748b; letter-spacing: 1px;">MENOR NOTA</div>
+            </div>
+        </div>
+    </div>
+    {% endfor %}
+</div>
+
+<div class="panel-grid">
+    <!-- ÚLTIMAS ENTREGAS -->
+    <div class="card" style="grid-column: span 1;">
+        <h3 style="margin-bottom: 2rem;">👥 Últimas Atividades dos Alunos</h3>
+        <div style="max-height: 600px; overflow-y: auto; padding-right: 0.5rem;">
+            {% for s in recent_submissions %}
+            <div style="padding: 1.5rem; background: rgba(255,255,255,0.02); border: 1px solid var(--border); margin-bottom: 1rem; border-radius: 12px; display: flex; justify-content: space-between; align-items: center;">
+                <div>
+                    <div style="font-weight: bold; color: white; font-size: 1.1rem;">{{ s.student_name }}</div>
+                    <div style="font-size: 0.8rem; color: #94a3b8; margin-top: 0.2rem;">📌 {{ s.exam_title }}</div>
+                    <div style="font-size: 0.7rem; color: #64748b; margin-top: 0.4rem;">📅 {{ s.created_at }}</div>
+                </div>
+                <div style="text-align: right;">
+                    <div style="font-size: 1.5rem; font-weight: 900; color: {% if s.percentage >= 70 %}#10b981{% elif s.percentage >= 40 %}#eab308{% else %}#ef4444{% endif %};">
+                        {{ s.score }}/{{ s.total_questions }}
+                    </div>
+                    <div style="font-size: 0.75rem; color: #64748b; font-weight: bold;">{{ s.percentage|int }}% ACERTO</div>
+                </div>
+            </div>
+            {% else %}
+            <p style="text-align: center; color: #64748b;">Nenhuma submissão registrada.</p>
+            {% endfor %}
+        </div>
+    </div>
+
+    <!-- QUESTÕES CRÍTICAS -->
+    <div class="card" style="grid-column: span 1; border-top: 5px solid #ef4444;">
+        <h3 style="color: #ef4444; margin-bottom: 0.5rem;">⚠️ Questões Críticas (Top 10 Erros)</h3>
+        <p style="font-size: 0.9rem; color: #94a3b8; margin-bottom: 2rem;">Estas questões tiveram o maior índice de erro e podem precisar de revisão em aula.</p>
+        
+        {% for q in failed_questions %}
+        <div style="margin-bottom: 2.5rem; padding: 1.5rem; background: rgba(239, 68, 68, 0.05); border-radius: 16px; border: 1px solid rgba(239, 68, 68, 0.2);">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem;">
+                <div style="font-size: 0.9rem; color: white; font-weight: bold;">{{ q.exam_title }}</div>
+                <div style="background: #ef4444; color: white; padding: 4px 12px; border-radius: 20px; font-weight: bold; font-size: 0.8rem;">
+                    {{ q.total_errors }} Erros Identificados
+                </div>
+            </div>
+            <div style="text-align: center; background: #000; padding: 1rem; border-radius: 8px;">
+                <img src="{{ url_for('static', filename='uploads/exams/' + q.question_image) }}" style="max-width: 100%; border-radius: 4px;">
+            </div>
+        </div>
+        {% else %}
+        <p style="text-align: center; color: #64748b;">Sem dados de erro suficientes.</p>
+        {% endfor %}
+    </div>
+</div>
+{% endblock %}

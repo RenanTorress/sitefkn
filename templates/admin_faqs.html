@@ -1,0 +1,51 @@
+{% extends 'base.html' %}
+{% block content %}
+<div class="header-title" style="text-align: left; margin-bottom: 3rem; display: flex; justify-content: space-between; align-items: flex-end;">
+    <div>
+        <h1>❓ Gestão de Perguntas Frequentes (FAQ)</h1>
+        <p>Crie e edite as respostas rápidas da plataforma.</p>
+    </div>
+    <a href="{{ url_for('admin') }}" class="btn">Voltar ao Painel</a>
+</div>
+
+<div class="panel-grid">
+    <div class="card">
+        <h2 style="color: var(--primary); margin-bottom: 1.5rem;">Adicionar Nova FAQ</h2>
+        <form method="POST">
+            <div class="form-group">
+                <label>Pergunta (O que o aluno vai ver):</label>
+                <input type="text" name="question" class="form-control" required placeholder="Ex: Onde encontro as aulas?">
+            </div>
+            <div class="form-group">
+                <label>Resposta Completa:</label>
+                <textarea name="answer" class="form-control" rows="4" required placeholder="Ex: Você pode encontrar as aulas na seção de materiais..."></textarea>
+            </div>
+            <div class="form-group">
+                <label style="color: #eab308;">Palavra-Chave para o Link (Opcional):</label>
+                <p style="font-size: 0.8rem; color: #94a3b8; margin-top: 0.2rem;">Essa palavra na resposta acima ficará em amarelo e será clicável.</p>
+                <input type="text" name="keyword" class="form-control" placeholder="Ex: materiais">
+            </div>
+            <div class="form-group">
+                <label style="color: #eab308;">URL de Destino do Link:</label>
+                <input type="text" name="redirect_url" class="form-control" placeholder="Ex: /materiais">
+            </div>
+            <button type="submit" class="btn" style="width: 100%;">Adicionar Pergunta ✅</button>
+        </form>
+    </div>
+    
+    <div class="card">
+        <h2 style="margin-bottom: 1.5rem;">FAQ Ativa</h2>
+        <div style="max-height: 600px; overflow-y: auto;">
+        {% for faq in faqs %}
+        <div style="padding: 1.2rem; background: rgba(0,0,0,0.3); border: 1px solid var(--border); margin-bottom: 1rem; border-radius: 12px;">
+            <div style="font-weight: bold; color: white; margin-bottom: 0.5rem; font-size: 1.1rem;">{{ faq.question }}</div>
+            <div style="font-size: 0.9rem; color: #94a3b8; font-style: italic; margin-bottom: 0.5rem;">{{ faq.answer }}</div>
+            <div style="font-size: 0.8rem; color: #64748b;">Link: <strong style="color: #eab308;">{{ faq.keyword or 'Nenhum' }}</strong> &rarr; {{ faq.redirect_url or '-' }}</div>
+        </div>
+        {% else %}
+        <div style="text-align: center; color: #64748b; padding: 3rem;">Nenhuma FAQ cadastrada.</div>
+        {% endfor %}
+        </div>
+    </div>
+</div>
+{% endblock %}
