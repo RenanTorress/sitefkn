@@ -202,7 +202,24 @@ def edit_profile():
             if supabase:
                 # Upload to Supabase Storage
                 file_content = file.read()
-                supabase.storage.from_('avatars').upload(filename, file_content, {"upsert": "true"})
+                content_type = file.content_type or 'image/jpeg'
+                try:
+                    supabase.storage.from_('avatars').upload(
+                        filename,
+                        file_content,
+                        file_options={"content-type": content_type, "upsert": "true"}
+                    )
+                except Exception:
+                    # Arquivo já existe: remove e re-envia
+                    try:
+                        supabase.storage.from_('avatars').remove([filename])
+                    except Exception:
+                        pass
+                    supabase.storage.from_('avatars').upload(
+                        filename,
+                        file_content,
+                        file_options={"content-type": content_type}
+                    )
                 # Get public URL
                 pic_url = supabase.storage.from_('avatars').get_public_url(filename)
             else:
@@ -246,7 +263,11 @@ def admin_upload():
             
             if supabase:
                 file_content = file.read()
-                supabase.storage.from_('materiais').upload(filename, file_content)
+                content_type = file.content_type or 'application/octet-stream'
+                supabase.storage.from_('materiais').upload(
+                    filename, file_content,
+                    file_options={"content-type": content_type, "upsert": "true"}
+                )
                 file_url = supabase.storage.from_('materiais').get_public_url(filename)
                 # Use filename as filepath in DB but it will be a URL or unique Key
                 storage_path = file_url
@@ -462,7 +483,11 @@ def view_forum(forum_id):
                 filename = f"forum_{int(time.time())}_{secure_filename(file.filename)}"
                 if supabase:
                     file_content = file.read()
-                    supabase.storage.from_('materiais').upload(f"forum/{filename}", file_content)
+                    content_type = file.content_type or 'application/octet-stream'
+                    supabase.storage.from_('materiais').upload(
+                        f"forum/{filename}", file_content,
+                        file_options={"content-type": content_type, "upsert": "true"}
+                    )
                     file_path = supabase.storage.from_('materiais').get_public_url(f"forum/{filename}")
                 else:
                     full_path = os.path.join(app.config['UPLOAD_FOLDER'], 'forum', filename)
@@ -513,7 +538,11 @@ def view_topic(topic_id):
                 filename = f"forum_{int(time.time())}_{secure_filename(file.filename)}"
                 if supabase:
                     file_content = file.read()
-                    supabase.storage.from_('materiais').upload(f"forum/{filename}", file_content)
+                    content_type = file.content_type or 'application/octet-stream'
+                    supabase.storage.from_('materiais').upload(
+                        f"forum/{filename}", file_content,
+                        file_options={"content-type": content_type, "upsert": "true"}
+                    )
                     file_path = supabase.storage.from_('materiais').get_public_url(f"forum/{filename}")
                 else:
                     full_path = os.path.join(app.config['UPLOAD_FOLDER'], 'forum', filename)
@@ -642,8 +671,9 @@ with app.app_context():
         conn.execute('INSERT INTO users (email, password_hash, name, role) VALUES (?, ?, ?, ?)',
                      ('desenvolper@fkn.com', generate_password_hash('Praxair1'), 'Desenvolvedor Master', 'developer'))
     else:
-        conn.execute("UPDATE users SET password_hash = ?, role = 'developer', name = 'Desenvolvedor Master' WHERE email = ?",
-                     (generate_password_hash('Praxair1'), 'desenvolper@fkn.com'))
+        # Só atualiza role e nome — NÃO regenera password_hash (lento, causa timeout no Supabase)
+        conn.execute("UPDATE users SET role = 'developer', name = 'Desenvolvedor Master' WHERE email = ?",
+                     ('desenvolper@fkn.com',))
         
     # Garantir MASTER (Agora chamado de Professor)
     master_exists = conn.execute('SELECT * FROM users WHERE email = ?', ('admin@admin.com',)).fetchone()
@@ -651,8 +681,7 @@ with app.app_context():
         conn.execute('INSERT INTO users (email, password_hash, name, role) VALUES (?, ?, ?, ?)',
                      ('admin@admin.com', generate_password_hash('123456'), 'Professor', 'master'))
     else:
-        # Garantir o papel de master e o nome Professor se não tiver mudado
-        conn.execute("UPDATE users SET role = 'master', name = 'Professor' WHERE email = ? AND name = 'Fundador Oficial'", ('admin@admin.com',))
+        # Garantir o papel de master — NÃO regenera password_hash
         conn.execute("UPDATE users SET role = 'master' WHERE email = ?", ('admin@admin.com',))
         
     conn.commit()
@@ -691,7 +720,11 @@ def report_bug():
         filename = f"bug_{int(time.time())}_{secure_filename(file.filename)}"
         if supabase:
             file_content = file.read()
-            supabase.storage.from_('materiais').upload(f"bugs/{filename}", file_content)
+            content_type = file.content_type or 'application/octet-stream'
+            supabase.storage.from_('materiais').upload(
+                f"bugs/{filename}", file_content,
+                file_options={"content-type": content_type, "upsert": "true"}
+            )
             attachment_url = supabase.storage.from_('materiais').get_public_url(f"bugs/{filename}")
             filename = attachment_url
         else:

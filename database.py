@@ -62,11 +62,20 @@ def init_db():
     with open('schema.sql', 'r', encoding='utf-8') as f:
         sql = f.read()
         if DATABASE_URL:
-            # PostgreSQL não aceita executescript diretamente do sqlite3
             cur = conn.cursor()
             try:
-                cur.execute(sql)
+                # Define timeout maior para as operações de inicialização
+                cur.execute("SET statement_timeout = '60s'")
                 conn.commit()
+                # Executa statement por statement para não estourar timeout
+                statements = [s.strip() for s in sql.split(';') if s.strip()]
+                for stmt in statements:
+                    try:
+                        cur.execute(stmt)
+                        conn.commit()
+                    except Exception as e:
+                        conn.rollback()
+                        print(f"[init_db] Aviso ao executar statement: {e}")
             finally:
                 cur.close()
         else:
