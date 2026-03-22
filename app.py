@@ -27,32 +27,37 @@ def allowed_file(filename):
     return '.' in filename and filename.rsplit('.', 1)[1].lower() in ALLOWED_EXTENSIONS
 
 def supabase_upload(bucket, path, file_content, content_type):
-    """Upload para Supabase Storage. Retorna URL pública como string.
-    Constrói a URL manualmente para evitar bugs do get_public_url() no supabase-py 2.x"""
+    import httpx
+    import json
+    url = f"{SUPABASE_URL}/storage/v1/object/{bucket}/{path}"
+    headers = {
+        "Authorization": f"Bearer {SUPABASE_KEY}",
+        "apikey": SUPABASE_KEY,
+        "x-upsert": "true",
+        "Content-Type": content_type
+    }
+    
     try:
-        supabase.storage.from_(bucket).upload(
-            path, file_content,
-            file_options={"content-type": content_type, "upsert": "true"}
-        )
-    except Exception as e1:
-        print(f"[upload] Primeira tentativa falhou (upsert): {e1}")
-        # Arquivo já existe ou upsert falhou: remove e re-envia
-        try:
-            supabase.storage.from_(bucket).remove([path])
-        except Exception:
-            pass
-        try:
-            supabase.storage.from_(bucket).upload(
-                path, file_content,
-                file_options={"content-type": content_type}
-            )
-        except Exception as e2:
-            print(f"[upload] Erro final no Supabase (verifique RLS policy ou buckets): {e2}")
+        # Tenta disparar com timeout mais estrito com httpx
+        with httpx.Client(timeout=30.0) as client:
+            res = client.post(url, headers=headers, content=file_content)
+            
+        if res.status_code >= 400:
+            error_details = res.text
+            print(f"[upload] Erro Supabase HTTP {res.status_code}: {error_details}")
             try:
-                flash(f"Detalhes Supabase: {str(e2)}", "error")
-            except:
-                pass
-            return None  # Retorna None para o app fazer fallback local
+                from flask import flash
+                flash(f"Detalhes Supabase (HTTP {res.status_code}): {error_details[:200]}", "error")
+            except: pass
+            return None
+            
+    except Exception as e:
+        print(f"[upload] Erro geral na requisição: {e}")
+        try:
+            from flask import flash
+            flash(f"Erro Conexão Supabase: {str(e)[:150]}", "error")
+        except: pass
+        return None
 
     # Constrói a URL pública manualmente (evita problema do get_public_url() retornar objeto)
     # Formato Supabase: {URL}/storage/v1/object/public/{bucket}/{path}
