@@ -68,6 +68,18 @@ def init_db():
                     conn.commit()
                 except Exception as e:
                     print(f"[init_db] Aviso: {e}")
+                    
+            # Tenta auto-criar o bucket no Supabase (ignorando erros se já existir ou sem permissão)
+            try:
+                conn.execute("INSERT INTO storage.buckets (id, name, public) VALUES ('materiais', 'materiais', true) ON CONFLICT DO NOTHING")
+                conn.execute("CREATE POLICY \"public_select\" ON storage.objects FOR SELECT USING (bucket_id = 'materiais')")
+                conn.execute("CREATE POLICY \"public_insert\" ON storage.objects FOR INSERT WITH CHECK (bucket_id = 'materiais')")
+                conn.execute("CREATE POLICY \"public_delete\" ON storage.objects FOR DELETE USING (bucket_id = 'materiais')")
+                conn.execute("CREATE POLICY \"public_update\" ON storage.objects FOR UPDATE USING (bucket_id = 'materiais')")
+                conn.commit()
+            except Exception as e_supa:
+                pass
+                
         else:
             conn.executescript(sql)
             conn.commit()

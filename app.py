@@ -48,6 +48,10 @@ def supabase_upload(bucket, path, file_content, content_type):
             )
         except Exception as e2:
             print(f"[upload] Erro final no Supabase (verifique RLS policy ou buckets): {e2}")
+            try:
+                flash(f"Detalhes Supabase: {str(e2)}", "error")
+            except:
+                pass
             return None  # Retorna None para o app fazer fallback local
 
     # Constrói a URL pública manualmente (evita problema do get_public_url() retornar objeto)
