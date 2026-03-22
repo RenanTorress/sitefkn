@@ -152,8 +152,6 @@ def admin():
     # Early initialization for safety
     topicos_pendentes = []
     topicos_respondidos = []
-    daily_hits = 0
-    total_downloads = 0
 
     try:
         topicos_pendentes = conn.execute('''
@@ -167,26 +165,14 @@ def admin():
             WHERE t.status = 'respondido' ORDER BY t.created_at DESC
         ''').fetchall()
         
-        # Stats for Admin
-        try:
-            today = datetime.date.today().isoformat()
-            count_row = conn.execute('SELECT count FROM daily_access WHERE access_date = ?', (today,)).fetchone()
-            daily_hits = count_row['count'] if count_row else 0
-            
-            downloads_row = conn.execute('SELECT SUM(download_count) as total FROM files').fetchone()
-            total_downloads = downloads_row['total'] if downloads_row and downloads_row['total'] else 0
-        except:
-            pass
-        
     except sqlite3.OperationalError:
-        topicos_pendentes = [] # Tratamento em caso do banco ainda não migrado
+        topicos_pendentes = [] 
         topicos_respondidos = []
         
     conn.close()
     return render_template('admin.html', 
                            users=users, all_folders=all_folders, forums=forums, files=files, 
-                           topicos_pendentes=topicos_pendentes, topicos_respondidos=topicos_respondidos,
-                           daily_hits=daily_hits, total_downloads=total_downloads)
+                           topicos_pendentes=topicos_pendentes, topicos_respondidos=topicos_respondidos)
 
 @app.route('/admin/profile', methods=['POST'])
 def edit_profile():
@@ -591,6 +577,9 @@ with app.app_context():
     # try: conn.execute('ALTER TABLE exam_questions ADD COLUMN resolution_text TEXT'); conn.commit()
     # except: pass
     
+    try: conn.execute('ALTER TABLE topics ADD COLUMN status TEXT DEFAULT "aguardando"'); conn.commit()
+    except: pass
+    
     # Garantir Tabelas de Estatísticas
     # conn.execute('''CREATE TABLE IF NOT EXISTS exam_submissions (
     #     id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -620,6 +609,35 @@ with app.app_context():
     # except: pass
     # try: conn.execute('ALTER TABLE exam_submissions ADD COLUMN percentage REAL DEFAULT 0')
     # except: pass
+    
+    # Rota adicional para deletar FAQ
+    @app.route('/admin/faqs/delete/<int:faq_id>', methods=['POST'])
+    def delete_faq(faq_id):
+        if 'user_id' not in session: return redirect(url_for('login'))
+        conn = get_db()
+        conn.execute('DELETE FROM faqs WHERE id = ?', (faq_id,))
+        conn.commit()
+        conn.close()
+        flash('Pergunta removida com sucesso.', 'success')
+        return redirect(url_for('admin_faqs'))
+
+    # Rota adicional para editar FAQ
+    @app.route('/admin/faqs/edit/<int:faq_id>', methods=['POST'])
+    def edit_faq(faq_id):
+        if 'user_id' not in session: return redirect(url_for('login'))
+        question = request.form['question']
+        answer = request.form['answer']
+        keyword = request.form.get('keyword', '')
+        redirect_url = request.form.get('redirect_url', '')
+        
+        conn = get_db()
+        conn.execute('UPDATE faqs SET question=?, answer=?, keyword=?, redirect_url=? WHERE id=?', 
+                     (question, answer, keyword, redirect_url, faq_id))
+        conn.commit()
+        conn.close()
+        flash('Pergunta atualizada com sucesso.', 'success')
+        return redirect(url_for('admin_faqs'))
+
     conn.commit()
     
     # Forçar dados do DESENVOLVEDOR...
