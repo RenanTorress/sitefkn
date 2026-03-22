@@ -118,6 +118,60 @@ def load_settings():
     
     conn.close()
 
+@app.route('/debug_supabase')
+def debug_supabase():
+    try:
+        import os
+        import tempfile
+        import traceback
+        
+        url = os.environ.get('SUPABASE_URL', 'Not Set')
+        key = os.environ.get('SUPABASE_KEY', 'Not Set')
+        
+        if url == 'Not Set' or key == 'Not Set':
+            return {"error": "Credentials missing"}
+            
+        from supabase import create_client
+        client = create_client(url, key)
+        
+        # Test buckets list
+        try:
+            buckets = client.storage.list_buckets()
+            bucket_list = [b.name for b in buckets]
+        except Exception as e:
+            bucket_list = f"Error listing buckets: {str(e)}"
+            
+        # Test upload
+        fd, tmp_path = tempfile.mkstemp()
+        with os.fdopen(fd, 'wb') as f:
+            f.write(b"Test payload")
+            
+        upload_res = None
+        try:
+            res = client.storage.from_("materiais").upload(
+                "debug_test.txt", tmp_path, 
+                file_options={"content-type": "text/plain", "upsert": "true"}
+            )
+            upload_res = str(res)
+            # Cleanup
+            try: client.storage.from_("materiais").remove(["debug_test.txt"])
+            except: pass
+        except Exception as e:
+            upload_res = f"Upload Exception: {str(e)} | Trace: {traceback.format_exc()}"
+        finally:
+            try: os.remove(tmp_path)
+            except: pass
+            
+        return {
+            "supabase_url": url,
+            "key_length": len(key) if key != "Not Set" else 0,
+            "buckets": bucket_list,
+            "upload_test_result": upload_res
+        }
+    except Exception as general_e:
+        import traceback
+        return {"fatal": str(general_e), "trace": traceback.format_exc()}
+
 @app.route('/')
 def index(): return render_template('index.html')
 
