@@ -41,7 +41,7 @@
             <h4 class="file-title" style="font-size: 1.1rem;">{{ file.filename }}</h4>
             <div class="file-meta">
                 <span>{{ file.size | format_size }}</span>
-                <span>{{ file.uploaded_at.split()[0] }}</span>
+                <span>{{ (file.uploaded_at|string).split()[0] }}</span>
             </div>
         </div>
         <a href="{{ url_for('download', file_id=file.id) }}" class="btn" style="padding: 0.6rem 1rem;">Baixar Arquivo</a>

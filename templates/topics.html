@@ -24,7 +24,7 @@
                 {% endif %}
                 
                 <h3 style="margin-bottom: 0.5rem; font-size: 1.25rem;">{% if session.get('user_id') %}{{ topic.title }}{% else %}{{ topic.title | censor }}{% endif %}</h3>
-                <div style="font-size: 0.85rem; color: #94a3b8;">Iniciado por: <span style="color: var(--primary); font-weight: bold;">{{ topic.author_name }}</span> em {{ topic.created_at.split()[0] }}</div>
+                <div style="font-size: 0.85rem; color: #94a3b8;">Iniciado por: <span style="color: var(--primary); font-weight: bold;">{{ topic.author_name }}</span> em {{ (topic.created_at|string).split()[0] }}</div>
             </a>
             
             {% if session.get('user_id') %}
