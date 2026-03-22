@@ -1,7 +1,7 @@
 import sqlite3
 import os
 import pg8000.dbapi
-from urllib.parse import urlparse
+from urllib.parse import urlparse, unquote
 
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 DATABASE = os.path.join(BASE_DIR, 'database.db')
@@ -17,11 +17,11 @@ def get_db():
         # PostgreSQL (Supabase) via pg8000 (Pure Python)
         url = urlparse(DATABASE_URL)
         conn = pg8000.dbapi.connect(
-            user=url.username,
-            password=url.password,
+            user=unquote(url.username) if url.username else None,
+            password=unquote(url.password) if url.password else None,
             host=url.hostname,
             port=url.port or 5432,
-            database=url.path[1:]
+            database=url.path[1:] if url.path else 'postgres'
         )
         
         # Patch connection to behave like SQLite's connection and return dict-like rows
