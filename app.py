@@ -32,19 +32,24 @@ def supabase_upload(bucket, path, file_content, content_type):
     try:
         supabase.storage.from_(bucket).upload(
             path, file_content,
-            file_options={"content-type": content_type, "x-upsert": "true"}
+            file_options={"content-type": content_type, "upsert": "true"}
         )
     except Exception as e1:
-        print(f"[upload] Primeira tentativa falhou: {e1}")
-        # Arquivo já existe: remove e re-envia
+        print(f"[upload] Primeira tentativa falhou (upsert): {e1}")
+        # Arquivo já existe ou upsert falhou: remove e re-envia
         try:
             supabase.storage.from_(bucket).remove([path])
         except Exception:
             pass
-        supabase.storage.from_(bucket).upload(
-            path, file_content,
-            file_options={"content-type": content_type}
-        )
+        try:
+            supabase.storage.from_(bucket).upload(
+                path, file_content,
+                file_options={"content-type": content_type}
+            )
+        except Exception as e2:
+            print(f"[upload] Erro final no Supabase (verifique RLS policy ou buckets): {e2}")
+            return None  # Retorna None para o app fazer fallback local
+
     # Constrói a URL pública manualmente (evita problema do get_public_url() retornar objeto)
     # Formato Supabase: {URL}/storage/v1/object/public/{bucket}/{path}
     return f"{SUPABASE_URL}/storage/v1/object/public/{bucket}/{path}"
@@ -222,12 +227,17 @@ def edit_profile():
         if file and file.filename != '' and allowed_file(file.filename):
             filename = f"avatar_{user_id}_{secure_filename(file.filename)}"
             
+            pic_url = None
             if supabase:
                 file_content = file.read()
                 content_type = file.content_type or 'image/jpeg'
                 pic_url = supabase_upload('avatars', filename, file_content, content_type)
-            else:
-                # Fallback to local (not recommended for production on Render)
+            
+            if not pic_url:
+                if supabase: 
+                    flash('Erro no Supabase (Verifique o Bucket ou RLS). Salvando imagem localmente.', 'error')
+                    file.seek(0)
+                # Fallback to local
                 img_dir = os.path.join(app.config['UPLOAD_FOLDER'], 'avatars')
                 os.makedirs(img_dir, exist_ok=True)
                 filepath = os.path.join(img_dir, filename)
@@ -265,12 +275,17 @@ def admin_upload():
         if file and allowed_file(file.filename):
             filename = f"{int(time.time())}_{secure_filename(file.filename)}"
             
+            storage_path = None
             if supabase:
                 file_content = file.read()
                 content_type = file.content_type or 'application/octet-stream'
                 file_url = supabase_upload('materiais', filename, file_content, content_type)
                 storage_path = file_url
-            else:
+                
+            if not storage_path:
+                if supabase: 
+                    flash('Erro no bucket Supabase. Salvando localmente.', 'error')
+                    file.seek(0)
                 filepath = os.path.join(app.config['UPLOAD_FOLDER'], filename)
                 file.save(filepath)
                 storage_path = filename
@@ -484,7 +499,11 @@ def view_forum(forum_id):
                     file_content = file.read()
                     content_type = file.content_type or 'application/octet-stream'
                     file_path = supabase_upload('materiais', f"forum/{filename}", file_content, content_type)
-                else:
+                
+                if not file_path:
+                    if supabase:
+                        file.seek(0)
+                        flash('Arquivo anexado não pôde ir para a nuvem. Salvando localmente.', 'error')
                     full_path = os.path.join(app.config['UPLOAD_FOLDER'], 'forum', filename)
                     file.save(full_path)
                     file_path = filename
@@ -531,11 +550,15 @@ def view_topic(topic_id):
             file = request.files['file']
             if file and file.filename != '' and allowed_file(file.filename):
                 filename = f"forum_{int(time.time())}_{secure_filename(file.filename)}"
+                file_path = None
                 if supabase:
                     file_content = file.read()
                     content_type = file.content_type or 'application/octet-stream'
                     file_path = supabase_upload('materiais', f"forum/{filename}", file_content, content_type)
-                else:
+                
+                if not file_path:
+                    if supabase:
+                        file.seek(0)
                     full_path = os.path.join(app.config['UPLOAD_FOLDER'], 'forum', filename)
                     file.save(full_path)
                     file_path = filename
@@ -712,7 +735,13 @@ def report_bug():
         if supabase:
             file_content = file.read()
             content_type = file.content_type or 'application/octet-stream'
-            filename = supabase_upload('materiais', f"bugs/{filename}", file_content, content_type)
+            uploaded_url = supabase_upload('materiais', f"bugs/{filename}", file_content, content_type)
+            if uploaded_url:
+                filename = uploaded_url
+            else:
+                file.seek(0)
+                os.makedirs(os.path.join(app.config['UPLOAD_FOLDER'], 'bugs'), exist_ok=True)
+                file.save(os.path.join(app.config['UPLOAD_FOLDER'], 'bugs', filename))
         else:
             os.makedirs(os.path.join(app.config['UPLOAD_FOLDER'], 'bugs'), exist_ok=True)
             file.save(os.path.join(app.config['UPLOAD_FOLDER'], 'bugs', filename))
