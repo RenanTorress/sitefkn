@@ -181,6 +181,10 @@ def debug_supabase():
         import traceback
         return {"fatal": str(general_e), "trace": traceback.format_exc()}
 
+@app.route('/ping')
+def ping():
+    return 'pong', 200
+
 @app.route('/')
 def index(): return render_template('index.html')
 
@@ -495,6 +499,9 @@ def delete_user(user_id):
             can_delete = True
             
     if can_delete:
+        conn.execute('UPDATE files SET uploaded_by = NULL WHERE uploaded_by = ?', (user_id,))
+        conn.execute('UPDATE logs SET user_id = NULL WHERE user_id = ?', (user_id,))
+        conn.execute('UPDATE messages SET user_id = NULL WHERE user_id = ?', (user_id,))
         conn.execute('DELETE FROM users WHERE id = ?', (user_id,))
         conn.commit()
         log_action(current_user_id, 'Banir Admin', f"Removeu acesso de: {target['email']} ({target['role']})")
