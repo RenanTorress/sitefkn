@@ -75,7 +75,11 @@
                 <div style="font-size: 0.85rem; color: #94a3b8; margin-bottom: 0.8rem; display:flex; align-items:center; gap: 0.5rem;">
                     <span style="font-size: 1.2rem;">📎</span> Arquivo Localizado:
                 </div>
+                {% if msg.file_path.startswith('http') %}
+                <a href="{{ msg.file_path }}" target="_blank" class="btn" style="background: rgba(255,255,255,0.05); border: 1px solid var(--primary); color: var(--text-color); padding: 0.6rem 1.5rem;">⏬ Visualizar Anexo Seguro</a>
+                {% else %}
                 <a href="{{ url_for('download_forum', filename=msg.file_path) }}" class="btn" style="background: rgba(255,255,255,0.05); border: 1px solid var(--primary); color: var(--text-color); padding: 0.6rem 1.5rem;">⏬ Baixar Anexo Seguro</a>
+                {% endif %}
             </div>
             {% endif %}
             

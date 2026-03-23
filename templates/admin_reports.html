@@ -33,7 +33,15 @@
             {% if report.attachment_path %}
             <div style="margin-top: 1.5rem; padding: 1rem; background: rgba(0,0,0,0.3); border-radius: 8px; border: 1px dashed #ef4444;">
                 <p style="font-size: 0.8rem; color: #94a3b8; margin-bottom: 0.5rem;">Anexo Enviado:</p>
-                <img src="{{ url_for('static', filename='uploads/bugs/' + report.attachment_path) }}" style="max-width: 100%; border-radius: 4px; box-shadow: 0 4px 10px rgba(0,0,0,0.5);">
+                {% if report.attachment_path.startswith('http') %}
+                <a href="{{ report.attachment_path }}" target="_blank">
+                    <img src="{{ report.attachment_path }}" style="max-width: 100%; border-radius: 4px; box-shadow: 0 4px 10px rgba(0,0,0,0.5);">
+                </a>
+                {% else %}
+                <a href="{{ url_for('static', filename='uploads/bugs/' + report.attachment_path) }}" target="_blank">
+                    <img src="{{ url_for('static', filename='uploads/bugs/' + report.attachment_path) }}" style="max-width: 100%; border-radius: 4px; box-shadow: 0 4px 10px rgba(0,0,0,0.5);">
+                </a>
+                {% endif %}
             </div>
             {% endif %}
         </div>
